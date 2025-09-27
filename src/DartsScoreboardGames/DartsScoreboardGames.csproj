@@ -28,9 +28,5 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="wwwroot\avatars\" />
-  </ItemGroup>
-
+	
 </Project>
