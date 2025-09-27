@@ -4,5 +4,6 @@
         public abstract static string Description { get; }
         public abstract static int PlayerRequirement { get; }
         public abstract static string Logo { get; }
+        public abstract static string Background { get; }
     }
 }

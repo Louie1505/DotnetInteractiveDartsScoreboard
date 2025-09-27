@@ -4,7 +4,7 @@
 
 @inject GameStateProvider GameStateProvider
 
-<MudCard Class="pa-5 mx-10">
+<MudCard Class="pa-5 mx-10" Style=@($"background-image: url({TGame.Background});background-size: cover;background-position: center;")>
     <MudText Align=Align.Center Typo="Typo.h3">@TGame.Name</MudText>
     <MudImage class="mx-auto my-5" Src=@TGame.Logo Height="250" Width="250" />
     <MudText Class="my-5" Align=Align.Center Typo="Typo.body1">@TGame.Description</MudText>
