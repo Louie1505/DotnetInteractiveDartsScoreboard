@@ -1,0 +1,10 @@
+﻿@page "/"
+
+@inject GameStateProvider GameStateProvider 
+
+
+@if (GameStateProvider.CurrentGame is null) {
+    <LandingScreen />
+} else {
+    @* TODO load a game *@
+}

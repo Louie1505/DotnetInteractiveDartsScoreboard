@@ -1,0 +1,55 @@
+﻿@using DartsScoreboardGames.Components.Pages.Screens.SharedComponents
+@using PinguApps.Blazor.QRCode
+
+@implements IDisposable
+
+@inject NavigationManager NavigationManager
+@inject GameStateProvider GameStateProvider
+@inject IDialogService DialogService
+
+<MudGrid>
+    <MudItem lg="4" xs="0" Class="d-none d-lg-flex">
+        <div Class="mx-5 d-flex flex-column">
+            <MudText Typo="Typo.h3" Align="Align.Center">Join the Game at <br /> <strong>@NavigationManager.Uri</strong> <br /> or scan: </MudText>
+            <QRCode Class="mx-auto mt-15" Data=@NavigationManager.Uri Size="150px" />
+        </div>
+    </MudItem>
+    <MudItem lg="4" xs="12">
+        <div Class="mx-5 d-flex flex-column">
+            <MudButton Variant="Variant.Filled">Start New Game</MudButton>
+        </div>
+    </MudItem>
+    <MudItem lg="4" xs="12">
+        <div Class="mx-5 d-flex flex-column">
+            @if (!GameStateProvider.Players.Any()) {
+                <MudText Typo="Typo.h5">Waiting for players..</MudText>
+            } else { 
+                @foreach (var player in GameStateProvider.Players) {
+                    <MudText Typo="Typo.h5">@player.Name</MudText>
+                }
+            }
+            <MudIconButton Class="mx-auto" Icon="fa-regular fa-plus" @onclick="OpenDialogAsync" />
+        </div>
+    </MudItem>
+</MudGrid>
+
+
+@code {
+    protected override void OnInitialized() {
+        GameStateProvider.OnGameStateChanged += ChangeHandler;
+    }
+
+    public void Dispose() {
+        GameStateProvider.OnGameStateChanged -= ChangeHandler;
+
+    }
+
+    private async void ChangeHandler(object? sender, EventArgs e) =>
+        await InvokeAsync(StateHasChanged);
+
+    private Task OpenDialogAsync() {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+
+        return DialogService.ShowAsync<AddPlayerDialog>(string.Empty, new DialogOptions() { NoHeader = true });
+    }
+}
