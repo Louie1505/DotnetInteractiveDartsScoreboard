@@ -13,6 +13,7 @@ builder.Services
 
 builder.Services.AddSingleton<CustomThemeProvider>();
 builder.Services.AddSingleton<GameStateProvider>();
+builder.Services.AddSingleton<AvatarImageProvider>();
 
 var app = builder.Build();
 

@@ -1,5 +1,7 @@
 ﻿
 @inject GameStateProvider GameStateProvider
+@inject AvatarImageProvider AvatarImageProvider
+
 <div>
     <MudDialog>
         <DialogContent>
@@ -10,6 +12,12 @@
                     }
                 </MudTabPanel>
                 <MudTabPanel Text="Create New">
+                    @foreach (var item in AvatarImageProvider.Avatars)
+                    {
+                        <MudAvatar>
+                            <MudImage Src=@item ></MudImage>
+                        </MudAvatar>
+                    }
                     <MudTextField @bind-Value="NewPlayerName" Label="Name" Variant="Variant.Text"></MudTextField>
                     <MudButton OnClick="@(async () => await AddPlayer(new(NewPlayerName)))">Add</MudButton>
                 </MudTabPanel>
@@ -30,6 +38,7 @@
     ];
 
     public string NewPlayerName { get; set; } = default!;
+    public string NewAvatar { get; set; } = default!;
 
 
     private async Task AddPlayer(Player player) {
