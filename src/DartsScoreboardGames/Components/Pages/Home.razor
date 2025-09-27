@@ -1,10 +1,26 @@
 ﻿@page "/"
+@using DartsScoreboardGames.Services.Games
 
 @inject GameStateProvider GameStateProvider 
 
 
 @if (GameStateProvider.CurrentGame is null) {
     <LandingScreen />
-} else {
-    @* TODO load a game *@
+} else if(GameStateProvider.CurrentGame is GameSelection gameSelection) {
+    <GameSelectScreen />
+}
+
+@code {
+    protected override void OnInitialized() {
+        GameStateProvider.OnGameStateChanged += ChangeHandler;
+    }
+
+    public void Dispose() {
+        GameStateProvider.OnGameStateChanged -= ChangeHandler;
+
+    }
+
+    private async void ChangeHandler(object? sender, EventArgs e) =>
+        await InvokeAsync(StateHasChanged);
+
 }

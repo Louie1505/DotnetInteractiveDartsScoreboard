@@ -2,3 +2,12 @@
     padding: 0px !important;
     margin: 0px !important;
 }
+
+::deep .mud-expand-panel-header {
+    padding: 0px !important;
+    width: 50px;
+}
+
+::deep .mud-expand-panel-content.mud-expand-panel-gutters {
+    padding: 0px !important;
+}

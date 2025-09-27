@@ -1,6 +1,9 @@
 using DartsScoreboardGames.Components;
+using DartsScoreboardGames.Infrastructure.Data;
+using DartsScoreboardGames.Infrastructure.Services;
 using DartsScoreboardGames.Services;
 using DartsScoreboardGames.Theming;
+using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,9 +14,15 @@ builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddDbContext<AppDbContext>(o => {
+    o.UseSqlite("Data Source=db.db");
+});
+
 builder.Services.AddSingleton<CustomThemeProvider>();
 builder.Services.AddSingleton<GameStateProvider>();
 builder.Services.AddSingleton<AvatarImageProvider>();
+
+builder.Services.AddScoped<PlayerHistoryService>();
 
 var app = builder.Build();
 
@@ -35,4 +44,8 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-app.Run();
+using var scope = app.Services.CreateScope();
+using var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+await context.Database.EnsureCreatedAsync();
+
+await app.RunAsync();

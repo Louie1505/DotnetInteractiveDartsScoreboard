@@ -1,0 +1,16 @@
+﻿@using DartsScoreboardGames.Services.Games
+
+@typeparam TGame where TGame : IGameDefinition, new()
+
+@inject GameStateProvider GameStateProvider
+
+<MudCard Class="pa-5 mx-10"  >
+    <MudText Align=Align.Center Typo="Typo.h3">@TGame.Name</MudText>
+    <MudImage class="mx-auto my-5" Src="assets/dartboard.png" Height="100" Width="100" />
+    <MudText Class="my-5" Align=Align.Center Typo="Typo.body1">@TGame.Description</MudText>
+    <MudButton Class="@("mx-auto " + (TGame.PlayerRequirement > 1 ? "" : "mb-10"))" Style="width: 10em" Onclick=@(() => GameStateProvider.SetGameScreen<TGame>()) Disabled=@(GameStateProvider.Players.Count < TGame.PlayerRequirement)>Start Game</MudButton>
+    @if (TGame.PlayerRequirement > 1) {
+        <MudText class="mt-5" Align=Align.Center Typo="Typo.caption">@($"{TGame.PlayerRequirement}+ Players")</MudText>
+    }
+</MudCard>
+
