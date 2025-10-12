@@ -1,0 +1,27 @@
+﻿@using DartsScoreboardGames.Infrastructure.Services
+@using DartsScoreboardGames.Services.Models
+
+@inject GameStateProvider GameStateProvider
+@inject AvatarImageProvider AvatarImageProvider
+@inject PlayerHistoryService PlayerHistoryService
+
+<div>
+    <MudDialog Style="width: 50vw;" >
+        <DialogContent>
+           
+        </DialogContent>
+    </MudDialog>
+</div>
+
+@code{
+    [CascadingParameter]
+    private IMudDialogInstance? Me { get; set; }
+
+    public Player WinningPlayer { get; set; } = default!;
+
+    private void NewGame() {
+        GameStateProvider.EndGame();
+        Me?.Close();
+    }
+
+}

@@ -8,6 +8,7 @@
 @implements IGameScreen<StandardGame>
 
 @inject GameStateProvider GameStateProvider
+@inject CheckoutCalculator CheckoutCalculator
 
 <style>
     .mud-card {
@@ -36,11 +37,11 @@
                     })" />
                     <div class="d-flex flex-column flex-wrap my-auto mx-auto">
                         <MudText Typo="Typo.h6" Align="Align.Center">3 Dart Avg</MudText>
-                        <MudText Typo="Typo.subtitle1" Align="Align.Center">0</MudText>
+                        <MudText Typo="Typo.subtitle1" Align="Align.Center">@(AvgScore(turns[player]))</MudText>
                     </div>
                     <div class="d-flex flex-column flex-wrap my-auto">
                         <MudText Typo="Typo.h6" Align="Align.Center">Highest Score</MudText>
-                        <MudText Typo="Typo.subtitle1" Align="Align.Center">0</MudText>
+                        <MudText Typo="Typo.subtitle1" Align="Align.Center">@(HighestScore(turns[player]))</MudText>
                     </div>
                     <div class="d-flex flex-row flex-wrap my-auto ml-auto mr-10">
                         <div class="d-flex flex-column mr-5 my-auto" Style="min-width: 50px;">
@@ -56,7 +57,7 @@
                                 }
                             }
                         </div>
-                        <MudText class="mx-auto my-auto" Align=Align.Center Style="min-width: 90px;" Typo="Typo.h3" Color="@(activePlayer == player && (currentTurn?.Bust ?? false) ? Color.Error : Color.Default)">@scores[player]</MudText>
+                        <AnimatedNumberDisplay @ref=ScoreDisplay Color="@(activePlayer == player && (currentTurn?.Bust ?? false) ? Color.Error : Color.Default)" StartingValue="301" />
                     </div>
                 </MudCard>
 
@@ -66,12 +67,33 @@
         <MudButton Class="ml-5" Variant="Variant.Filled" OnClick=@(() => GameStateProvider.EndGame())>End Game</MudButton>
     </MudItem>
 </MudGrid>
+<MudDrawer @bind-Open="@checkoutDrawerOpen" Elevation="0" Variant="@DrawerVariant.Temporary" Overlay=false Anchor="Anchor.Right">
+    <MudDrawerHeader>
+        <MudText Typo="Typo.h6">Checkouts</MudText>
+    </MudDrawerHeader>
+    <div class="d-flex flex-column mt-5" Style="min-width: 50px;">
+        @foreach (var checkout in CheckoutCalculator.CheckoutsFor(scores[activePlayer], currentTurn?.Remaining ?? 3)) {
+            <div class="d-flex flex-row my-auto" Style="min-width: 50px;">
+                @foreach (var dart in checkout.Darts) {
+                    <MudChip Size=Size.Large T="string" Color="Color.Success" class="mx-auto mt-3">@dart.ToString()</MudChip>
+                }
+            </div>
+        }
+    </div>
+</MudDrawer>
 @code {
 
     private Player activePlayer = default!;
     private Dictionary<Player, int> scores = [];
     private Dictionary<Player, List<Turn>> turns = [];
     private Turn? currentTurn => turns.TryGetValue(activePlayer, out List<Turn>? playerTurns) ? playerTurns.LastOrDefault() : default;
+
+    List<AnimatedNumberDisplay> ScoreDisplays = new List<AnimatedNumberDisplay>();
+    AnimatedNumberDisplay ScoreDisplay {
+        set { ScoreDisplays.Add(value); }
+    }
+
+    private bool checkoutDrawerOpen;
 
     protected override void OnInitialized() {
         GameStateProvider.OnGameStateChanged += ChangeHandler;
@@ -85,34 +107,58 @@
         Dart dart = Dart.GetRandomDart();
 
         if (scores[activePlayer] - dart.Value <= 1) {
-            currentTurn?.GoBust();
+            if (dart.IsDouble && dart.Value == scores[activePlayer]) { 
+                //win
+            } else {
+                currentTurn?.GoBust();
+            }
             await InvokeAsync(StateHasChanged);
         } else {
             currentTurn?.AddNext(dart);
-            await ReduceScore(dart.Value);
+            scores[activePlayer] -= dart.Value;
+            await ScoreDisplays.ElementAt(GameStateProvider.Players.IndexOf(activePlayer)).TransitionValue(scores[activePlayer]);
+            await CheckCheckout();
         }
 
-        if (currentTurn?.Complete ?? false) {
+        if ((currentTurn?.Complete ?? false) || (currentTurn?.Bust ?? false)) {
             await EndTurn();
-        }
-    }
-
-    private async Task ReduceScore(int scored) {
-        for (int i = 0; i < scored; i++) {
-            scores[activePlayer]--;
-            await InvokeAsync(StateHasChanged);
-            await Task.Delay(25);
         }
     }
 
     private async Task EndTurn() {
         currentTurn?.End();
-        await Task.Delay(1500);
+        await Task.Delay(1000);
         turns[activePlayer].Add(new());
         activePlayer = GameStateProvider.Players.IndexOf(activePlayer) == GameStateProvider.Players.Count - 1 ?
             GameStateProvider.Players.First() :
             GameStateProvider.Players.ElementAt(GameStateProvider.Players.IndexOf(activePlayer) + 1);
+        await CheckCheckout();
     }
+
+    private async Task CheckCheckout() {
+        checkoutDrawerOpen = CheckoutCalculator.CanCheckout(scores[activePlayer], currentTurn?.Remaining ?? 3);
+    }
+
+    private double AvgScore(List<Turn> turns) {
+        var completed = turns.Where(x => x.Complete);
+
+        if (!completed.Any()) {
+            return 0;
+        }
+
+        return Math.Round(completed.Average(x => x.TotalValue), 2);
+    }
+
+    private double HighestScore(List<Turn> turns) {
+        var completed = turns.Where(x => x.Complete);
+
+        if (!completed.Any()) {
+            return 0;
+        }
+
+        return completed.Max(x => x.TotalValue);
+    }
+
 
     public void Dispose() {
         GameStateProvider.OnGameStateChanged -= ChangeHandler;

@@ -98,7 +98,7 @@ namespace DartsScoreboardGames.Services.Models {
             // Get all public static properties of type Dart, excluding NoScore
             var dartProps = dartType
                 .GetProperties(BindingFlags.Public | BindingFlags.Static)
-                .Where(p => p.PropertyType == dartType && p.Name != nameof(NoScore))
+                .Where(p => p.PropertyType == dartType)
                 .ToArray();
 
             if (dartProps.Length == 0)

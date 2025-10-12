@@ -1,0 +1,24 @@
+﻿<MudText class="mx-auto my-auto" Align=Align.Center Style="min-width: 90px;" Typo="Typo.h3" Color="@Color">@value</MudText>
+
+
+@code {
+    [Parameter]
+    public Color Color { get; set; } = Color.Primary;
+
+    [Parameter]
+    public int StartingValue { get; set; }
+
+    private int value;
+
+    protected override void OnInitialized() {
+        value = StartingValue;
+    }
+
+    public async Task TransitionValue(int newValue) { 
+        while(value > newValue) {
+            value--;
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(25);
+        }
+    }
+}
