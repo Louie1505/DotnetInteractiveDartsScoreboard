@@ -1,0 +1,123 @@
+﻿@using DartsScoreboardGames.Components.Pages.Screens.Games.Interfaces
+@using DartsScoreboardGames.Components.Pages.Screens.SharedComponents
+@using DartsScoreboardGames.Services.Games
+@using DartsScoreboardGames.Services.Models
+@using System.Timers
+
+@implements IDisposable
+@implements IGameScreen<StandardGame>
+
+@inject GameStateProvider GameStateProvider
+
+<style>
+    .mud-card {
+        transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s;
+        height: 10vh;
+        box-shadow: none;
+    }
+
+    .mud-card.active {
+        height: 15vh;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+        z-index: 1;
+    }
+</style>
+
+<MudGrid Class="mt-lg-20">
+    <MudItem Class="mx-auto" xs=11 lg=8>
+        <div class="d-flex flex-wrap">
+            @foreach (var player in GameStateProvider.Players) {
+
+                <MudCard class="@("w-100 flex-row my-5" + (activePlayer == player ? " active" : string.Empty))" Style="width:100%;">
+                    <PlayerDisplay class="my-auto ml-10" Player="@player" OnSelect="@(async () => {
+                        if(activePlayer == player) {
+                            await OnDart();
+                        }
+                    })" />
+                    <div class="d-flex flex-column flex-wrap my-auto mx-auto">
+                        <MudText Typo="Typo.h6" Align="Align.Center">3 Dart Avg</MudText>
+                        <MudText Typo="Typo.subtitle1" Align="Align.Center">0</MudText>
+                    </div>
+                    <div class="d-flex flex-column flex-wrap my-auto">
+                        <MudText Typo="Typo.h6" Align="Align.Center">Highest Score</MudText>
+                        <MudText Typo="Typo.subtitle1" Align="Align.Center">0</MudText>
+                    </div>
+                    <div class="d-flex flex-row flex-wrap my-auto ml-auto mr-10">
+                        <div class="d-flex flex-column mr-5 my-auto" Style="min-width: 50px;">
+                            @if(activePlayer == player && currentTurn is not null) {
+                                @if (currentTurn.Throws.First.HasValue && !currentTurn.Bust) {
+                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@currentTurn?.Throws.First?.ToString()</MudChip>
+                                }
+                                @if (currentTurn.Throws.Second.HasValue && !currentTurn.Bust) {
+                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@currentTurn?.Throws.Second?.ToString()</MudChip>
+                                }
+                                @if (currentTurn.Throws.Third.HasValue && !currentTurn.Bust) {
+                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@currentTurn?.Throws.Third?.ToString()</MudChip>
+                                }
+                            }
+                        </div>
+                        <MudText class="mx-auto my-auto" Align=Align.Center Style="min-width: 90px;" Typo="Typo.h3" Color="@(activePlayer == player && (currentTurn?.Bust ?? false) ? Color.Error : Color.Default)">@scores[player]</MudText>
+                    </div>
+                </MudCard>
+
+            }
+        </div>
+        <MudButton Class="ml-5" Variant="Variant.Filled" OnClick=@(async () => await EndTurn())>End Turn</MudButton>
+        <MudButton Class="ml-5" Variant="Variant.Filled" OnClick=@(() => GameStateProvider.EndGame())>End Game</MudButton>
+    </MudItem>
+</MudGrid>
+@code {
+
+    private Player activePlayer = default!;
+    private Dictionary<Player, int> scores = [];
+    private Dictionary<Player, List<Turn>> turns = [];
+    private Turn? currentTurn => turns.TryGetValue(activePlayer, out List<Turn>? playerTurns) ? playerTurns.LastOrDefault() : default;
+
+    protected override void OnInitialized() {
+        GameStateProvider.OnGameStateChanged += ChangeHandler;
+        activePlayer = GameStateProvider.Players.First();
+        scores = GameStateProvider.Players.ToDictionary(x => x, x => 301);
+        turns = GameStateProvider.Players.ToDictionary(x => x, x => new List<Turn>() { new() });
+    }
+
+    private async Task OnDart() {
+        //TODO this is where we wire in the computer vision code (triggering this method)
+        Dart dart = Dart.GetRandomDart();
+
+        if (scores[activePlayer] - dart.Value <= 1) {
+            currentTurn?.GoBust();
+            await InvokeAsync(StateHasChanged);
+        } else {
+            currentTurn?.AddNext(dart);
+            await ReduceScore(dart.Value);
+        }
+
+        if (currentTurn?.Complete ?? false) {
+            await EndTurn();
+        }
+    }
+
+    private async Task ReduceScore(int scored) {
+        for (int i = 0; i < scored; i++) {
+            scores[activePlayer]--;
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(25);
+        }
+    }
+
+    private async Task EndTurn() {
+        currentTurn?.End();
+        await Task.Delay(1500);
+        turns[activePlayer].Add(new());
+        activePlayer = GameStateProvider.Players.IndexOf(activePlayer) == GameStateProvider.Players.Count - 1 ?
+            GameStateProvider.Players.First() :
+            GameStateProvider.Players.ElementAt(GameStateProvider.Players.IndexOf(activePlayer) + 1);
+    }
+
+    public void Dispose() {
+        GameStateProvider.OnGameStateChanged -= ChangeHandler;
+    }
+
+    private async void ChangeHandler(object? sender, EventArgs e) =>
+        await InvokeAsync(StateHasChanged);
+}

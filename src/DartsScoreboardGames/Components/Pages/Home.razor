@@ -1,13 +1,25 @@
 ﻿@page "/"
+@using DartsScoreboardGames.Components.Pages.Screens.Games
 @using DartsScoreboardGames.Services.Games
 
 @inject GameStateProvider GameStateProvider 
 
-
-@if (GameStateProvider.CurrentGame is null) {
-    <LandingScreen />
-} else if(GameStateProvider.CurrentGame is GameSelection gameSelection) {
-    <GameSelectScreen />
+@switch (GameStateProvider.CurrentGame) {
+    case var e when e is GameSelection:
+        <GameSelectScreen />
+        break;
+    case var e when e is StandardGame:
+        <StandardGameScreen />
+        break;
+    case var e when e is KillerGame:
+        <KillerGameScreen />
+        break;
+    case var e when e is MathsGame:
+        <MathsGameScreen />
+        break;
+    default:
+        <LandingScreen />
+        break;
 }
 
 @code {

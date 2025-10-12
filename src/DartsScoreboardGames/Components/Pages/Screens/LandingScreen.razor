@@ -27,7 +27,7 @@
                 <MudText Typo="Typo.h5">Waiting for players..</MudText>
             } else { 
                 @foreach (var player in GameStateProvider.Players) {
-                    <PlayerDisplay Player=player OnCrossClick=@(() => GameStateProvider.RemovePlayer(player)) />
+                    <PlayerDisplay Class="mb-5" Player=player OnCrossClick=@(() => GameStateProvider.RemovePlayer(player)) />
                 }
             }
             <MudIconButton Class="mx-auto" Icon="fa-regular fa-plus" @onclick="OpenDialogAsync" />

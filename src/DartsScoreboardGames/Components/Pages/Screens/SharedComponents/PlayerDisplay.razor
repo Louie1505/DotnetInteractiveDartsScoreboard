@@ -1,11 +1,13 @@
 ﻿@using DartsScoreboardGames.Services.Models
 
-<div class="d-flex mb-5">
-    <MudAvatar Size="Size.Large" @onclick=OnSelect Style="cursor: pointer;">
+<div class=@(Class + " d-flex")>
+    <MudAvatar Size="Size.Large" @onclick=OnSelect Style="cursor: pointer">
         <MudImage Src=@(Player.Avatar)></MudImage>
     </MudAvatar>
     <MudText Class="my-auto ml-5" Typo="Typo.h5" @onclick=OnSelect Style="cursor: pointer;">@Player.Name</MudText>
-    <MudIconButton Icon="fa-regular fa-xmark" Class="ml-auto" Color="Color.Error" @onclick=OnCrossClick />
+    @if (OnCrossClick.HasDelegate) {
+        <MudIconButton Icon="fa-regular fa-xmark" Class="ml-auto" Color="Color.Error" @onclick=OnCrossClick />
+    }
 </div>
 
 @code {
@@ -14,7 +16,9 @@
     public Player Player { get; set; }
 
     [Parameter]
-    [EditorRequired]
+    public string Class { get; set; } = string.Empty;
+
+    [Parameter]
     public EventCallback<MouseEventArgs> OnCrossClick { get; set; }
 
     [Parameter]
