@@ -3,12 +3,16 @@
 
 @inject GameStateProvider GameStateProvider
 @inject AvatarImageProvider AvatarImageProvider
-@inject PlayerHistoryService PlayerHistoryService
 
 <div>
     <MudDialog Style="width: 50vw;" >
         <DialogContent>
-           
+            <MudAvatar Size="Size.Large">
+                <MudImage Src=@(WinningPlayer.Avatar)></MudImage>
+            </MudAvatar>
+            <MudText Class="my-auto ml-5" Typo="Typo.h5">@($"{WinningPlayer.Name} Wins!")</MudText>
+            <br/>
+            <MudButton OnClick="@(() => GameStateProvider.EndGame())">End Game</MudButton>
         </DialogContent>
     </MudDialog>
 </div>

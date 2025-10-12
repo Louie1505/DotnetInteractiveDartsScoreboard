@@ -6,6 +6,7 @@
 
 @implements IDisposable
 @implements IGameScreen<StandardGame>
+@inject IDialogService DialogService
 
 @inject GameStateProvider GameStateProvider
 @inject CheckoutCalculator CheckoutCalculator
@@ -107,8 +108,11 @@
         Dart dart = Dart.GetRandomDart();
 
         if (scores[activePlayer] - dart.Value <= 1) {
-            if (dart.IsDouble && dart.Value == scores[activePlayer]) { 
-                //win
+            if ((dart.IsDouble || dart == Dart.Bull) && dart.Value == scores[activePlayer]) { 
+                var param = new DialogParameters<WinDialog> {
+                    { x => x.WinningPlayer, activePlayer },
+                };
+                await DialogService.ShowAsync<WinDialog>("", param, new DialogOptions());
             } else {
                 currentTurn?.GoBust();
             }
