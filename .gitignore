@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/src/DartsScoreboardGames/db.db
+/src/DartsScoreboardGames/db.db-shm
+/src/DartsScoreboardGames/db.db-wal

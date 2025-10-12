@@ -1,0 +1,54 @@
+﻿@using DartsScoreboardGames.Components.Pages.Screens.SharedComponents
+@using DartsScoreboardGames.Infrastructure.Services
+@using PinguApps.Blazor.QRCode
+@using DartsScoreboardGames.Services.Games
+@implements IDisposable
+
+@inject NavigationManager NavigationManager
+@inject GameStateProvider GameStateProvider
+
+<MudButton Class="ml-5" Variant="Variant.Filled" OnClick=@(() => GameStateProvider.EndGame())>Go Back</MudButton>
+
+<div Class="d-none d-lg-flex">
+
+    <MudGrid Class="mt-20">
+        <MudItem lg="4" xs="0">
+            <GameCard TGame=@StandardGame />
+        </MudItem>
+        <MudItem lg="4" xs="12">
+            <GameCard TGame=@KillerGame />
+        </MudItem>
+        <MudItem lg="4" xs="12">
+            <GameCard TGame=@MathsGame />
+        </MudItem>
+    </MudGrid>
+</div>
+
+<div Class="d-flex d-lg-none mt-20">
+    <MudCarousel Class="mud-width-full" Style="height:80vh;" ShowArrows="false" ShowBullets="@true" EnableSwipeGesture="@true" AutoCycle="@false" TData="object">
+    <MudCarouselItem Transition="Transition.Slide">
+        <GameCard TGame=@StandardGame />
+    </MudCarouselItem>
+    <MudCarouselItem Transition="Transition.Slide">
+        <GameCard TGame=@KillerGame />
+    </MudCarouselItem>
+    <MudCarouselItem Transition="Transition.Slide">
+        <GameCard TGame=@MathsGame />
+    </MudCarouselItem>
+</MudCarousel>
+</div>
+
+@code {
+    protected override void OnInitialized() {
+        GameStateProvider.OnGameStateChanged += ChangeHandler;
+    }
+
+    public void Dispose() {
+        GameStateProvider.OnGameStateChanged -= ChangeHandler;
+
+    }
+
+    private async void ChangeHandler(object? sender, EventArgs e) =>
+        await InvokeAsync(StateHasChanged);
+
+}

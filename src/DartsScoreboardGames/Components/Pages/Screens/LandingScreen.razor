@@ -1,4 +1,6 @@
 ﻿@using DartsScoreboardGames.Components.Pages.Screens.SharedComponents
+@using DartsScoreboardGames.Infrastructure.Services
+@using DartsScoreboardGames.Services.Games
 @using PinguApps.Blazor.QRCode
 
 @implements IDisposable
@@ -7,16 +9,16 @@
 @inject GameStateProvider GameStateProvider
 @inject IDialogService DialogService
 
-<MudGrid>
+<MudGrid Class="mt-10 mt-lg-20">
     <MudItem lg="4" xs="0" Class="d-none d-lg-flex">
-        <div Class="mx-5 d-flex flex-column">
+        <div Class="mx-5 d-flex flex-column mx-auto">
             <MudText Typo="Typo.h3" Align="Align.Center">Join the Game at <br /> <strong>@NavigationManager.Uri</strong> <br /> or scan: </MudText>
             <QRCode Class="mx-auto mt-15" Data=@NavigationManager.Uri Size="150px" />
         </div>
     </MudItem>
     <MudItem lg="4" xs="12">
         <div Class="mx-5 d-flex flex-column">
-            <MudButton Variant="Variant.Filled">Start New Game</MudButton>
+            <MudButton Style="width: 10em" Class="mb-10 mb-lg-0 mx-auto mt-0 mt-lg-20" Variant="Variant.Filled" Disabled=@(!GameStateProvider.Players.Any()) OnClick=@(() => GameStateProvider.SetGameScreen<GameSelection>())>Start New Game</MudButton>
         </div>
     </MudItem>
     <MudItem lg="4" xs="12">
@@ -25,7 +27,7 @@
                 <MudText Typo="Typo.h5">Waiting for players..</MudText>
             } else { 
                 @foreach (var player in GameStateProvider.Players) {
-                    <MudText Typo="Typo.h5">@player.Name</MudText>
+                    <PlayerDisplay Player=player OnCrossClick=@(() => GameStateProvider.RemovePlayer(player)) />
                 }
             }
             <MudIconButton Class="mx-auto" Icon="fa-regular fa-plus" @onclick="OpenDialogAsync" />

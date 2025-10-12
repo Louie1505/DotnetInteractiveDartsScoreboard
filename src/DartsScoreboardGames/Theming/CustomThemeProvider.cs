@@ -17,7 +17,10 @@ public class CustomThemeProvider {
     public event EventHandler<EventArgs> OnThemeChanged;
 
     public readonly Lazy<MudTheme> Instance = new(() => new() {
-
+        LayoutProperties = new() { 
+            DefaultBorderRadius = "10px",
+            AppbarHeight = "15px"
+        }
     });
 }
 
