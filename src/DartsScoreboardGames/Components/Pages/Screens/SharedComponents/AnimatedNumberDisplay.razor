@@ -6,15 +6,23 @@
     public Color Color { get; set; } = Color.Primary;
 
     [Parameter]
-    public int StartingValue { get; set; }
+    public int Value { get; set; }
 
     private int value;
 
-    protected override void OnInitialized() {
-        value = StartingValue;
+    protected override async Task OnInitializedAsync() {
+        await TransitionValue(Value);
     }
 
-    public async Task TransitionValue(int newValue) { 
+    protected override async Task OnParametersSetAsync() {
+        await TransitionValue(Value);
+    }
+
+    private async Task TransitionValue(int newValue) {
+        if (value < newValue) {
+            value = newValue;
+            return;
+        }
         while(value > newValue) {
             value--;
             await InvokeAsync(StateHasChanged);

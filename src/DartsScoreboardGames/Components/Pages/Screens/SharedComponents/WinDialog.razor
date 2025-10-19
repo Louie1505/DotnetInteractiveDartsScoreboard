@@ -5,14 +5,16 @@
 @inject AvatarImageProvider AvatarImageProvider
 
 <div>
-    <MudDialog Style="width: 50vw;" >
+    <MudDialog Style="width: 50vw;background-image: url('assets/fireworks.gif');background-size: contain;" Class="pa-5" >
         <DialogContent>
-            <MudAvatar Size="Size.Large">
-                <MudImage Src=@(WinningPlayer.Avatar)></MudImage>
-            </MudAvatar>
-            <MudText Class="my-auto ml-5" Typo="Typo.h5">@($"{WinningPlayer.Name} Wins!")</MudText>
-            <br/>
-            <MudButton OnClick="@(() => GameStateProvider.EndGame())">End Game</MudButton>
+            <div class="d-flex flex-column">
+                <MudAvatar Size="Size.Large" Class="mx-auto mb-5">
+                    <MudImage Src=@(WinningPlayer.Avatar)></MudImage>
+                </MudAvatar>
+                <MudChip T="string" Class="my-auto ml-5 mx-auto " Variant="Variant.Filled" Color="Color.Success" Size="Size.Large">@($"{WinningPlayer.Name} Wins!")</MudChip>
+                <br/>
+                <MudButton Variant="Variant.Filled" Class="mx-auto d-lg-none" OnClick="NewGame">End Game</MudButton>
+            </div>
         </DialogContent>
     </MudDialog>
 </div>
@@ -21,11 +23,12 @@
     [CascadingParameter]
     private IMudDialogInstance? Me { get; set; }
 
+    [Parameter]
     public Player WinningPlayer { get; set; } = default!;
 
     private void NewGame() {
-        GameStateProvider.EndGame();
         Me?.Close();
+        GameStateProvider.EndGame();
     }
 
 }

@@ -38,7 +38,7 @@
                             </ChildContent>
                         </MudExpansionPanel>
                     </MudExpansionPanels>
-                    <MudTextField Immediate=true @bind-Value="NewPlayerName" Label="Name" Variant="Variant.Text" Class="my-5"></MudTextField>
+                    <MudTextField MaxLength=15 Immediate=true @bind-Value="NewPlayerName" Label="Name" Variant="Variant.Text" Class="my-5"></MudTextField>
                     <MudButton Disabled=@(string.IsNullOrEmpty(NewPlayerName)) OnClick="@(async () => await AddPlayer())" Variant="Variant.Filled">Add</MudButton>
                 </MudTabPanel>
             </MudTabs>
