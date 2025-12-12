@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import json
+import os
 
 class SimpleDartboardDetector:
     def __init__(self):
@@ -12,10 +14,42 @@ class SimpleDartboardDetector:
         self.stable_detections = []  # Store last few good detections
         self.max_stable = 3
         
-        # Adjustable parameters for reflection handling
+        # Settings file path
+        self.settings_file = 'dartboard_settings.json'
+        
+        # Adjustable parameters for reflection handling (defaults)
         self.dark_threshold = 70  # Adjustable with arrow keys
         self.brightness_adjust = 0  # Brightness adjustment (-50 to +50)
         self.contrast_adjust = 1.0  # Contrast multiplier (0.5 to 2.0)
+        
+        # Load saved settings
+        self.load_settings()
+    
+    def load_settings(self):
+        """Load settings from JSON file"""
+        try:
+            if os.path.exists(self.settings_file):
+                with open(self.settings_file, 'r') as f:
+                    settings = json.load(f)
+                    self.dark_threshold = settings.get('dark_threshold', 70)
+                    self.brightness_adjust = settings.get('brightness_adjust', 0)
+                    self.contrast_adjust = settings.get('contrast_adjust', 1.0)
+                    print(f"Loaded settings: Threshold={self.dark_threshold}, Brightness={self.brightness_adjust}, Contrast={self.contrast_adjust:.2f}")
+        except Exception as e:
+            print(f"Error loading settings: {e}. Using defaults.")
+    
+    def save_settings(self):
+        """Save current settings to JSON file"""
+        try:
+            settings = {
+                'dark_threshold': self.dark_threshold,
+                'brightness_adjust': self.brightness_adjust,
+                'contrast_adjust': self.contrast_adjust
+            }
+            with open(self.settings_file, 'w') as f:
+                json.dump(settings, f, indent=2)
+        except Exception as e:
+            print(f"Error saving settings: {e}")
         
     def detect_dartboard(self, frame):
         """
@@ -234,16 +268,19 @@ class SimpleDartboardDetector:
         """Adjust dark threshold for reflection handling"""
         self.dark_threshold = max(0, min(255, self.dark_threshold + delta))
         print(f"Dark threshold: {self.dark_threshold}")
+        self.save_settings()
     
     def adjust_brightness(self, delta):
         """Adjust brightness for reflection handling"""
         self.brightness_adjust = max(-50, min(50, self.brightness_adjust + delta))
         print(f"Brightness adjust: {self.brightness_adjust}")
+        self.save_settings()
     
     def adjust_contrast(self, delta):
         """Adjust contrast for reflection handling"""
         self.contrast_adjust = max(0.5, min(2.0, self.contrast_adjust + delta))
         print(f"Contrast adjust: {self.contrast_adjust:.2f}")
+        self.save_settings()
     
     def reset_adjustments(self):
         """Reset all adjustments to defaults"""
@@ -251,6 +288,7 @@ class SimpleDartboardDetector:
         self.brightness_adjust = 0
         self.contrast_adjust = 1.0
         print("Reset to defaults: Threshold=70, Brightness=0, Contrast=1.0")
+        self.save_settings()
 
 if __name__ == "__main__":
     # Test the detector
