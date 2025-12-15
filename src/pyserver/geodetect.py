@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import json
 import os
+import keyboard
 
 class SimpleDartboardDetector:
     def __init__(self):
@@ -22,6 +23,10 @@ class SimpleDartboardDetector:
         self.brightness_adjust = 0  # Brightness adjustment (-50 to +50)
         self.contrast_adjust = 1.0  # Contrast multiplier (0.5 to 2.0)
         
+        # Fine adjustment offsets in pixels
+        self.center_offset_x = 0  # Pixel offset in X direction (-20 to +20)
+        self.center_offset_y = 0  # Pixel offset in Y direction (-20 to +20)
+        
         # Load saved settings
         self.load_settings()
     
@@ -34,7 +39,9 @@ class SimpleDartboardDetector:
                     self.dark_threshold = settings.get('dark_threshold', 70)
                     self.brightness_adjust = settings.get('brightness_adjust', 0)
                     self.contrast_adjust = settings.get('contrast_adjust', 1.0)
-                    print(f"Loaded settings: Threshold={self.dark_threshold}, Brightness={self.brightness_adjust}, Contrast={self.contrast_adjust:.2f}")
+                    self.center_offset_x = settings.get('center_offset_x', 0)
+                    self.center_offset_y = settings.get('center_offset_y', 0)
+                    print(f"Loaded settings: Threshold={self.dark_threshold}, Brightness={self.brightness_adjust}, Contrast={self.contrast_adjust:.2f}, Offset=({self.center_offset_x}, {self.center_offset_y})")
         except Exception as e:
             print(f"Error loading settings: {e}. Using defaults.")
     
@@ -44,7 +51,9 @@ class SimpleDartboardDetector:
             settings = {
                 'dark_threshold': self.dark_threshold,
                 'brightness_adjust': self.brightness_adjust,
-                'contrast_adjust': self.contrast_adjust
+                'contrast_adjust': self.contrast_adjust,
+                'center_offset_x': self.center_offset_x,
+                'center_offset_y': self.center_offset_y
             }
             with open(self.settings_file, 'w') as f:
                 json.dump(settings, f, indent=2)
@@ -138,11 +147,23 @@ class SimpleDartboardDetector:
                  
                 
                 self.last_detection = (int(x), int(y), int(r))
-                self.dartboard_center = (int(x), int(y))
+                
+                # Apply small pixel offset for fine adjustment
+                final_x = int(x) + self.center_offset_x
+                final_y = int(y) + self.center_offset_y
+                
+                self.dartboard_center = (final_x, final_y)
                 self.dartboard_radius = int(r)
                 self.detection_count += 1
                 
-                return (x, y), r
+                return (final_x, final_y), r
+            else:
+                print(f"Debug: Validation failed - clearing previous detection")
+        
+        # Clear previous detection if validation fails
+        self.dartboard_center = None
+        self.dartboard_radius = None
+        self.last_detection = None
         
         return None, None
     
@@ -210,6 +231,10 @@ class SimpleDartboardDetector:
             # Show current adjustment values
             adj_text = f"T:{self.dark_threshold} B:{self.brightness_adjust} C:{self.contrast_adjust:.2f}"
             cv2.putText(result_frame, adj_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+            
+            # Show center offset values
+            offset_text = f"Offset: ({self.center_offset_x}, {self.center_offset_y})"
+            cv2.putText(result_frame, offset_text, (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
         else:
             # Show searching status
             cv2.putText(result_frame, "Searching for dartboard...", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
@@ -217,6 +242,10 @@ class SimpleDartboardDetector:
             # Show current adjustment values even when searching
             adj_text = f"T:{self.dark_threshold} B:{self.brightness_adjust} C:{self.contrast_adjust:.2f}"
             cv2.putText(result_frame, adj_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+            
+            # Show center offset values
+            offset_text = f"Offset: ({self.center_offset_x}, {self.center_offset_y})"
+            cv2.putText(result_frame, offset_text, (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
         
         # Draw keybind instructions
         keybinds = [
@@ -224,6 +253,7 @@ class SimpleDartboardDetector:
             "T/G = Threshold +/-",
             "Y/H = Brightness -/+", 
             "U/J = Contrast +/-",
+            "Arrows = Center Adjust",
             "R = Reset, D = Debug, Q = Quit"
         ]
         
@@ -277,12 +307,26 @@ class SimpleDartboardDetector:
         print(f"Contrast adjust: {self.contrast_adjust:.2f}")
         self.save_settings()
     
+    def adjust_center_x(self, delta):
+        """Adjust center X position by pixel offset"""
+        self.center_offset_x = max(-20, min(20, self.center_offset_x + delta))
+        print(f"Center X offset: {self.center_offset_x} pixels")
+        self.save_settings()
+    
+    def adjust_center_y(self, delta):
+        """Adjust center Y position by pixel offset"""
+        self.center_offset_y = max(-20, min(20, self.center_offset_y + delta))
+        print(f"Center Y offset: {self.center_offset_y} pixels")
+        self.save_settings()
+    
     def reset_adjustments(self):
         """Reset all adjustments to defaults"""
         self.dark_threshold = 70
         self.brightness_adjust = 0
         self.contrast_adjust = 1.0
-        print("Reset to defaults: Threshold=70, Brightness=0, Contrast=1.0")
+        self.center_offset_x = 0
+        self.center_offset_y = 0
+        print("Reset to defaults: Threshold=70, Brightness=0, Contrast=1.0, Offset=(0,0)")
         self.save_settings()
 
 if __name__ == "__main__":
@@ -341,8 +385,18 @@ if __name__ == "__main__":
                 detector.adjust_brightness(-5)
             elif key == ord('u'):  # U - increase contrast
                 detector.adjust_contrast(0.1)
-            elif key == ord('J'):  # j - decrease contrast
+            elif key == ord('j'):  # j - decrease contrast
                 detector.adjust_contrast(-0.1)
+            
+            # Check for arrow key presses using keyboard module
+            if keyboard.is_pressed('left'):
+                detector.adjust_center_x(-1)
+            elif keyboard.is_pressed('right'):
+                detector.adjust_center_x(1)
+            elif keyboard.is_pressed('up'):
+                detector.adjust_center_y(-1)
+            elif keyboard.is_pressed('down'):
+                detector.adjust_center_y(1)
     
     finally:
         cap.release()
