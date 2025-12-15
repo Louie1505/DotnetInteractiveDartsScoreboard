@@ -83,68 +83,63 @@ class SimpleDartboardDetector:
         # Final noise reduction
         dark_mask = cv2.medianBlur(dark_mask, 3)  # Smaller median filter
         
-        # Find circles in the dark mask
-        circles = cv2.HoughCircles(
-            dark_mask,
-            cv2.HOUGH_GRADIENT,
-            dp=1,
-            minDist=120,   # Increased to prevent multiple detections
-            param1=15,     # Lower for binary mask
-            param2=12,     # Even lower threshold for stability
-            minRadius=85,  # Slightly tighter range
-            maxRadius=175
-        )
+        # Use center of mass of the existing dark mask (which shows the dartboard as white)
+        # Find the center of mass of the white dartboard area in the mask
+        white_pixels_in_mask = np.where(dark_mask > 0)
         
-        if circles is not None:
-            circles = np.round(circles[0, :]).astype("int")
+        print(f"Debug: Found {len(white_pixels_in_mask[0])} white pixels in mask")
+        
+        if len(white_pixels_in_mask[0]) > 500:  # Lower threshold for debugging
+            y_coords, x_coords = white_pixels_in_mask
             
-            # Find the circle with the most dark pixels inside it
-            best_circle = None
-            best_dark_ratio = 0
+            # Calculate center of mass of the white dartboard area in the mask
+            com_x = int(np.mean(x_coords))
+            com_y = int(np.mean(y_coords))
             
-            for (x, y, r) in circles:
-                # Basic position validation
-                if (r + 20 < x < frame.shape[1] - r - 20 and 
-                    r + 20 < y < frame.shape[0] - r - 20):
-                    
-                    # Check how much of the circle area is dark
-                    dark_ratio = self._calculate_dark_ratio(dark_mask, x, y, r)
-                    
-                    if dark_ratio > best_dark_ratio and dark_ratio > 0.25:  # Slightly lower threshold
-                        best_dark_ratio = dark_ratio
-                        best_circle = (x, y, r)
+            # Estimate radius by finding distances from center
+            distances = np.sqrt((x_coords - com_x)**2 + (y_coords - com_y)**2)
             
-            if best_circle:
-                x, y, r = best_circle
+            # Use 99th percentile and add a multiplier to ensure we get the full dartboard
+            base_radius = int(np.percentile(distances, 99))
+            radius = int(base_radius * 1.1)  # Add 10% to ensure we capture the outer edge
+            
+            print(f"Debug: Center=({com_x}, {com_y}), Base Radius={base_radius}, Final Radius={radius}")
+            print(f"Debug: Frame size=({frame.shape[1]}, {frame.shape[0]})")
+            
+            # Ensure radius is reasonable for a dartboard and fits in frame
+            max_radius = min(350, frame.shape[1]//2.2, frame.shape[0]//2.2)  # Even larger max radius
+            radius = max(100, min(radius, max_radius))
+            
+            print(f"Debug: Adjusted radius to {radius}")
+            
+            # Much more lenient position validation
+            margin = 15  # Larger margin for bigger circles
+            frame_width = frame.shape[1]
+            frame_height = frame.shape[0]
+            
+            print(f"Debug: Validation check - need: {radius + margin} < {com_x} < {frame_width - radius - margin}")
+            print(f"Debug: Validation check - need: {radius + margin} < {com_y} < {frame_height - radius - margin}")
+            
+            if (radius + margin < com_x < frame_width - radius - margin and 
+                radius + margin < com_y < frame_height - radius - margin):
                 
-                # Enhanced smoothing with multiple detection history
+                print(f"Debug: Detection successful - final coords ({com_x}, {com_y}, {radius})")
+                x, y, r = int(com_x), int(com_y), int(radius)
+                
+                # Minimal smoothing for now to see if detection works
                 if self.last_detection is not None:
                     last_x, last_y, last_r = self.last_detection
                     
-                    # Check if this is a reasonable change
-                    center_diff = np.sqrt((x - last_x)**2 + (y - last_y)**2)
-                    radius_diff = abs(r - last_r)
-                    
-                    # If changes are small, use stronger smoothing
-                    if center_diff < 20 and radius_diff < 10:
-                        # Add to stable detections
-                        self.stable_detections.append((x, y, r))
-                        if len(self.stable_detections) > self.max_stable:
-                            self.stable_detections.pop(0)
-                        
-                        # Use averaged values for stability
-                        if len(self.stable_detections) >= 2:
-                            avg_x = int(np.mean([d[0] for d in self.stable_detections]))
-                            avg_y = int(np.mean([d[1] for d in self.stable_detections]))
-                            avg_r = int(np.mean([d[2] for d in self.stable_detections]))
-                            x, y, r = avg_x, avg_y, avg_r
-                    else:
-                        # Large change - reset stable detections
-                        self.stable_detections = [(x, y, r)]
+                    # Light smoothing
+                    smooth_factor = 0.3
+                    x = int(smooth_factor * last_x + (1 - smooth_factor) * x)
+                    y = int(smooth_factor * last_y + (1 - smooth_factor) * y)
+                    r = int(smooth_factor * last_r + (1 - smooth_factor) * r)
+                 
                 
-                self.last_detection = (x, y, r)
-                self.dartboard_center = (x, y)
-                self.dartboard_radius = r
+                self.last_detection = (int(x), int(y), int(r))
+                self.dartboard_center = (int(x), int(y))
+                self.dartboard_radius = int(r)
                 self.detection_count += 1
                 
                 return (x, y), r

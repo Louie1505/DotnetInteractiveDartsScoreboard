@@ -1,5 +1,5 @@
 {
-  "dark_threshold": 200,
-  "brightness_adjust": 0,
+  "dark_threshold": 65,
+  "brightness_adjust": 15,
   "contrast_adjust": 1.0
 }
