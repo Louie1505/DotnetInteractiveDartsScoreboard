@@ -21,6 +21,7 @@ builder.Services.AddDbContext<AppDbContext>(o => {
 builder.Services.AddSingleton<CustomThemeProvider>();
 builder.Services.AddSingleton<GameStateProvider>();
 builder.Services.AddSingleton<AvatarImageProvider>();
+builder.Services.AddSingleton<CheckoutCalculator>();
 
 builder.Services.AddScoped<PlayerHistoryService>();
 

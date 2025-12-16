@@ -1,6 +1,6 @@
 ﻿@using DartsScoreboardGames.Services.Games
 
-@typeparam TGame where TGame : IGameDefinition, new()
+@typeparam TGame where TGame : IGameState, new()
 
 @inject GameStateProvider GameStateProvider
 

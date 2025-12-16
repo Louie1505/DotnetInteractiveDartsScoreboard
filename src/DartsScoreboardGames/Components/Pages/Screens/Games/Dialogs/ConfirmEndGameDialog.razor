@@ -1,0 +1,22 @@
+﻿@inject GameStateProvider GameStateProvider
+
+<MudDialog>
+     <DialogContent>
+        Are you sure you want to end the game?
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Error" OnClick="Submit">OK</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; }
+
+    private void Submit() {
+        GameStateProvider.EndGame();
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

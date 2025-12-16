@@ -1,4 +1,5 @@
-﻿@using DartsScoreboardGames.Components.Pages.Screens.Games.Interfaces
+﻿@using DartsScoreboardGames.Components.Pages.Screens.Games.Dialogs
+@using DartsScoreboardGames.Components.Pages.Screens.Games.Interfaces
 @using DartsScoreboardGames.Components.Pages.Screens.SharedComponents
 @using DartsScoreboardGames.Services.Games
 @using DartsScoreboardGames.Services.Models
@@ -7,117 +8,117 @@
 @implements IDisposable
 @implements IGameScreen<StandardGame>
 
+@inject IDialogService DialogService
 @inject GameStateProvider GameStateProvider
-
-<style>
-    .mud-card {
-        transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s;
-        height: 10vh;
-        box-shadow: none;
-    }
-
-    .mud-card.active {
-        height: 15vh;
-        box-shadow: 0 10px 28px rgba(0,0,0,0.18);
-        z-index: 1;
-    }
-</style>
+@inject CheckoutCalculator CheckoutCalculator
 
 <MudGrid Class="mt-lg-20">
     <MudItem Class="mx-auto" xs=11 lg=8>
         <div class="d-flex flex-wrap">
             @foreach (var player in GameStateProvider.Players) {
 
-                <MudCard class="@("w-100 flex-row my-5" + (activePlayer == player ? " active" : string.Empty))" Style="width:100%;">
+                <MudCard class="@("w-100 flex-row my-5 game-card" + (GameStateProvider.ActivePlayer == player ? " active" : string.Empty))" Style="width:100%;">
                     <PlayerDisplay class="my-auto ml-10" Player="@player" OnSelect="@(async () => {
-                        if(activePlayer == player) {
-                            await OnDart();
+                        if(GameStateProvider.ActivePlayer == player) {
+                            await CurrentGame.FakeRandomDart();
                         }
                     })" />
                     <div class="d-flex flex-column flex-wrap my-auto mx-auto">
                         <MudText Typo="Typo.h6" Align="Align.Center">3 Dart Avg</MudText>
-                        <MudText Typo="Typo.subtitle1" Align="Align.Center">0</MudText>
+                        <MudText Typo="Typo.subtitle1" Align="Align.Center">@(CurrentGame.AvgScore(player))</MudText>
                     </div>
                     <div class="d-flex flex-column flex-wrap my-auto">
                         <MudText Typo="Typo.h6" Align="Align.Center">Highest Score</MudText>
-                        <MudText Typo="Typo.subtitle1" Align="Align.Center">0</MudText>
+                        <MudText Typo="Typo.subtitle1" Align="Align.Center">@(CurrentGame.HighestScore(player))</MudText>
                     </div>
                     <div class="d-flex flex-row flex-wrap my-auto ml-auto mr-10">
                         <div class="d-flex flex-column mr-5 my-auto" Style="min-width: 50px;">
-                            @if(activePlayer == player && currentTurn is not null) {
-                                @if (currentTurn.Throws.First.HasValue && !currentTurn.Bust) {
-                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@currentTurn?.Throws.First?.ToString()</MudChip>
+                            @if(GameStateProvider.ActivePlayer == player && GameStateProvider.CurrentTurn is not null) {
+                                @if (GameStateProvider.CurrentTurn.Throws.First.HasValue && !GameStateProvider.CurrentTurn.Bust) {
+                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@GameStateProvider.CurrentTurn?.Throws.First?.ToString()</MudChip>
                                 }
-                                @if (currentTurn.Throws.Second.HasValue && !currentTurn.Bust) {
-                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@currentTurn?.Throws.Second?.ToString()</MudChip>
+                                @if (GameStateProvider.CurrentTurn.Throws.Second.HasValue && !GameStateProvider.CurrentTurn.Bust) {
+                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@GameStateProvider.CurrentTurn?.Throws.Second?.ToString()</MudChip>
                                 }
-                                @if (currentTurn.Throws.Third.HasValue && !currentTurn.Bust) {
-                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@currentTurn?.Throws.Third?.ToString()</MudChip>
+                                @if (GameStateProvider.CurrentTurn.Throws.Third.HasValue && !GameStateProvider.CurrentTurn.Bust) {
+                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@GameStateProvider.CurrentTurn?.Throws.Third?.ToString()</MudChip>
                                 }
                             }
                         </div>
-                        <MudText class="mx-auto my-auto" Align=Align.Center Style="min-width: 90px;" Typo="Typo.h3" Color="@(activePlayer == player && (currentTurn?.Bust ?? false) ? Color.Error : Color.Default)">@scores[player]</MudText>
+                        <AnimatedNumberDisplay Color="@(GameStateProvider.ActivePlayer == player && (GameStateProvider.CurrentTurn?.Bust ?? false) ? Color.Error : Color.Default)" Value="@CurrentGame.PlayerScore(player)" />
                     </div>
                 </MudCard>
 
             }
         </div>
-        <MudButton Class="ml-5" Variant="Variant.Filled" OnClick=@(async () => await EndTurn())>End Turn</MudButton>
-        <MudButton Class="ml-5" Variant="Variant.Filled" OnClick=@(() => GameStateProvider.EndGame())>End Game</MudButton>
+        <div class="d-flex d-lg-none">
+            <MudButton Class="ml-5" Variant="Variant.Filled" OnClick=@(async () => await CurrentGame.EndTurn())>End Turn</MudButton>
+            <MudButton Class="ml-auto mr-5" Variant="Variant.Filled" OnClick=ConfirmEndGameAsync>End Game</MudButton>
+        </div>
     </MudItem>
 </MudGrid>
+<MudDrawer @bind-Open="@checkoutDrawerOpen" Elevation="0" Variant="@DrawerVariant.Temporary" Overlay=false Anchor="Anchor.Right">
+    <MudDrawerHeader>
+        <MudText Typo="Typo.h6">Checkouts</MudText>
+    </MudDrawerHeader>
+    <div class="d-flex flex-column mt-5" Style="min-width: 50px;">
+        @foreach (var checkout in CheckoutCalculator.CheckoutsFor(CurrentGame.ActivePlayerScore(), GameStateProvider.CurrentTurn?.Remaining ?? 3)) {
+            <div class="d-flex flex-row my-auto" Style="min-width: 50px;">
+                @foreach (var dart in checkout.Darts) {
+                    <MudChip Size=Size.Large T="string" Color="Color.Success" class="mx-auto mt-3">@dart.ToString()</MudChip>
+                }
+            </div>
+        }
+    </div>
+</MudDrawer>
 @code {
+    private StandardGame CurrentGame = default!;
 
-    private Player activePlayer = default!;
-    private Dictionary<Player, int> scores = [];
-    private Dictionary<Player, List<Turn>> turns = [];
-    private Turn? currentTurn => turns.TryGetValue(activePlayer, out List<Turn>? playerTurns) ? playerTurns.LastOrDefault() : default;
+    private bool checkoutDrawerOpen;
 
     protected override void OnInitialized() {
+        CurrentGame = (GameStateProvider.CurrentGame as StandardGame)!;
+
         GameStateProvider.OnGameStateChanged += ChangeHandler;
-        activePlayer = GameStateProvider.Players.First();
-        scores = GameStateProvider.Players.ToDictionary(x => x, x => 301);
-        turns = GameStateProvider.Players.ToDictionary(x => x, x => new List<Turn>() { new() });
+        GameStateProvider.OnPlayerWin += PlayerWinHandler;
+        CurrentGame.OnChange += GameEventHandler;
+        CurrentGame.OnTurnEnd += TurnEndHandler;
     }
 
-    private async Task OnDart() {
-        //TODO this is where we wire in the computer vision code (triggering this method)
-        Dart dart = Dart.GetRandomDart();
+    private Task ConfirmEndGameAsync() {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
 
-        if (scores[activePlayer] - dart.Value <= 1) {
-            currentTurn?.GoBust();
-            await InvokeAsync(StateHasChanged);
-        } else {
-            currentTurn?.AddNext(dart);
-            await ReduceScore(dart.Value);
-        }
-
-        if (currentTurn?.Complete ?? false) {
-            await EndTurn();
-        }
+        return DialogService.ShowAsync<ConfirmEndGameDialog>(String.Empty, options);
     }
 
-    private async Task ReduceScore(int scored) {
-        for (int i = 0; i < scored; i++) {
-            scores[activePlayer]--;
-            await InvokeAsync(StateHasChanged);
-            await Task.Delay(25);
-        }
+    private async Task CheckCheckout() {
+        checkoutDrawerOpen = CheckoutCalculator.CanCheckout(CurrentGame.ActivePlayerScore(), GameStateProvider.CurrentTurn?.Remaining ?? 3);
+        await InvokeAsync(StateHasChanged);
     }
 
-    private async Task EndTurn() {
-        currentTurn?.End();
-        await Task.Delay(1500);
-        turns[activePlayer].Add(new());
-        activePlayer = GameStateProvider.Players.IndexOf(activePlayer) == GameStateProvider.Players.Count - 1 ?
-            GameStateProvider.Players.First() :
-            GameStateProvider.Players.ElementAt(GameStateProvider.Players.IndexOf(activePlayer) + 1);
+    private async void GameEventHandler(object? sender, EventArgs e) { 
+        await CheckCheckout();
     }
 
-    public void Dispose() {
-        GameStateProvider.OnGameStateChanged -= ChangeHandler;
+    private async void PlayerWinHandler(object? sender, GameStateProvider.PlayerWinEventArgs e) {
+        checkoutDrawerOpen = false;
+        var param = new DialogParameters<WinDialog> {
+            { x => x.WinningPlayer, e.WinningPlayer },
+        };
+        await DialogService.ShowAsync<WinDialog>("", param, new DialogOptions());
     }
+
+    private async void TurnEndHandler(object? sender, EventArgs e) =>
+         await InvokeAsync(CheckCheckout);
 
     private async void ChangeHandler(object? sender, EventArgs e) =>
         await InvokeAsync(StateHasChanged);
+
+    public void Dispose() {
+        GameStateProvider.OnGameStateChanged -= ChangeHandler;
+        GameStateProvider.OnPlayerWin -= PlayerWinHandler;
+        CurrentGame.OnChange -= GameEventHandler;
+        CurrentGame.OnTurnEnd -= TurnEndHandler;
+    }
+
 }

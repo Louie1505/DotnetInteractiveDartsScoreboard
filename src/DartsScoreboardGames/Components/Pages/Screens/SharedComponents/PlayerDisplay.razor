@@ -1,10 +1,10 @@
 ﻿@using DartsScoreboardGames.Services.Models
 
 <div class=@(Class + " d-flex")>
-    <MudAvatar Size="Size.Large" @onclick=OnSelect Style="cursor: pointer">
+    <MudAvatar Class="my-auto" Size="Size.Large" @onclick=OnSelect Style="cursor: pointer">
         <MudImage Src=@(Player.Avatar)></MudImage>
     </MudAvatar>
-    <MudText Class="my-auto ml-5" Typo="Typo.h5" @onclick=OnSelect Style="cursor: pointer;">@Player.Name</MudText>
+    <MudText Class="my-auto ml-5" Typo="Typo.h5" @onclick=OnSelect Style="cursor: pointer;min-width: 7rem;max-width: 7rem;overflow-wrap: anywhere;">@Player.Name</MudText>
     @if (OnCrossClick.HasDelegate) {
         <MudIconButton Icon="fa-regular fa-xmark" Class="ml-auto" Color="Color.Error" @onclick=OnCrossClick />
     }

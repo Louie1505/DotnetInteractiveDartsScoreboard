@@ -49,9 +49,6 @@
     private async void ChangeHandler(object? sender, EventArgs e) =>
         await InvokeAsync(StateHasChanged);
 
-    private Task OpenDialogAsync() {
-        var options = new DialogOptions { CloseOnEscapeKey = true };
-
-        return DialogService.ShowAsync<AddPlayerDialog>(string.Empty, new DialogOptions() { NoHeader = true });
-    }
+    private Task OpenDialogAsync() =>
+        DialogService.ShowAsync<AddPlayerDialog>(string.Empty, new DialogOptions() { NoHeader = true });
 }
