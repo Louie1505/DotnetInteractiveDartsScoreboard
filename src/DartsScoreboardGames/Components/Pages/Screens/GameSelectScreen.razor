@@ -7,7 +7,7 @@
 @inject NavigationManager NavigationManager
 @inject GameStateProvider GameStateProvider
 
-<MudButton Class="ml-5" Variant="Variant.Filled" OnClick=@(() => GameStateProvider.EndGame())>Go Back</MudButton>
+<MudButton Class="ml-5 mt-3 d-block d-md-none" Variant="Variant.Filled" OnClick=@(() => GameStateProvider.EndGame())>Go Back</MudButton>
 
 <div Class="d-none d-lg-flex">
 
@@ -24,7 +24,7 @@
     </MudGrid>
 </div>
 
-<div Class="d-flex d-lg-none mt-20">
+<div Class="d-flex d-lg-none mt-md-20 mt-10">
     <MudCarousel Class="mud-width-full" Style="height:80vh;" ShowArrows="false" ShowBullets="@true" EnableSwipeGesture="@true" AutoCycle="@false" TData="object">
     <MudCarouselItem Transition="Transition.Slide">
         <GameCard TGame=@StandardGame />

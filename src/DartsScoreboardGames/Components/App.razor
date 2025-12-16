@@ -25,6 +25,17 @@
             .mud-card.game-card.dead {
                 opacity: 35%
             }
+
+        @@media screen and (max-width: 960px) {
+            .mud-card.game-card {
+                display: none; 
+            }
+
+                .mud-card.game-card.active {
+                    display: flex;
+                    height: 20vh;
+                }
+        }
     </style>
     <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png" />

@@ -49,4 +49,4 @@ using var scope = app.Services.CreateScope();
 using var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 await context.Database.EnsureCreatedAsync();
 
-await app.RunAsync();
+await app.RunAsync("http://*:5144");

@@ -35,14 +35,7 @@ namespace DartsScoreboardGames.Services.Games {
             return game;
         }
 
-        public async Task FakeRandomDart() {
-            //TODO this is where we wire in the computer vision code (triggering this method)
-            Dart dart = Dart.GetRandomDart();
-
-            await OnDart(dart);
-        }
-
-        private async Task OnDart(Dart dart) {
+        public async Task OnDart(Dart dart) {
             GameStateProvider.CurrentTurn?.AddNext(dart);
 
             //here
@@ -103,6 +96,7 @@ namespace DartsScoreboardGames.Services.Games {
 
         public async Task EndTurn() {
             GameStateProvider.CurrentTurn?.End();
+            GameStateProvider.ForceStateChange();
             await Task.Delay(1000);
             GameStateProvider.SetNextPlayer();
             OnTurnEnd?.Invoke(this, EventArgs.Empty);

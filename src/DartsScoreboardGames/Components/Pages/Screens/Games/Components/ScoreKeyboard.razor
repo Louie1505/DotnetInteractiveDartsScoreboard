@@ -1,0 +1,110 @@
+﻿@using DartsScoreboardGames.Components.Pages.Screens.Games.Dialogs
+@using DartsScoreboardGames.Services.Models
+
+
+@inject IDialogService DialogService
+@inject GameStateProvider GameStateProvider
+
+
+<div class="d-flex flex-column">
+    <div>
+        <MudGrid>
+            <MudItem xs="12">
+                <div class="d-flex">
+                    <MudButton Size=Size.Medium Variant=Variant.Filled Disabled=@(!_double && !_treble)
+                               OnClick=@(() => {
+                                   _double = false;
+                                   _treble = false;
+                               }) Class="mx-auto">Single</MudButton>
+
+                    <MudButton Size=Size.Medium Variant=Variant.Filled Disabled=@(_double)
+                               OnClick=@(() => {
+                                   _double = true;
+                                   _treble = false;
+                               }) Class="mx-auto">Double</MudButton>
+
+                    <MudButton Size=Size.Medium Variant=Variant.Filled Disabled=@(_treble)
+                               OnClick=@(() => {
+                                   _double = false;
+                                   _treble = true;
+                               }) Class="mx-auto">Treble</MudButton>
+
+                </div>
+            </MudItem>
+            <MudItem xs="12">
+                <div class="d-flex flex-wrap">
+                    @for (int i = 1; i < 6; i++) {
+                        <div class="d-flex flex-wrap mx-auto">
+                            @{
+                                var first = 1 + 4 * (i - 1);
+                            }
+                            @for (int j = first; j < first + 4; j++) {
+                                var lbl = (j);
+                                <MudButton Style="width: 5em" Size=Size.Medium Variant=Variant.Filled Class="mx-2 mb-2"
+                                           OnClick="@(() => {
+                                               GameStateProvider.CurrentGame!.OnDart(new() {
+                                                   FaceValue = lbl,
+                                                   IsDouble = _double,
+                                                   IsTreble = _treble
+                                               });
+                                           })">@( $"{(_double ? "D" : _treble ? "T" : "S")}{lbl}")</MudButton>
+                                                }
+                        </div>
+                    }
+                </div>
+                <div class="d-flex">
+                    <div class="d-flex mx-auto">
+                        <MudButton 
+                            Style="width: 5em" 
+                            Size=Size.Medium 
+                            Variant=Variant.Filled 
+                            Class="mx-3 mt-3" 
+                            OnClick="@(() => {
+                                GameStateProvider.CurrentGame!.OnDart(Dart.OuterBull);
+                            })">OBull</MudButton>
+
+                        <MudButton 
+                            Style="width: 5em" 
+                            Size=Size.Medium 
+                            Variant=Variant.Filled 
+                            Class="mx-3 mt-3" 
+                            OnClick="@(() => {
+                                GameStateProvider.CurrentGame!.OnDart(Dart.Bull);
+                            })">Bull</MudButton>
+
+                        <MudButton 
+                            Style="width: 5em" 
+                            Size=Size.Medium 
+                            Variant=Variant.Filled 
+                            Class="mx-3 mt-3" 
+                            OnClick="@(() => {
+                                GameStateProvider.CurrentGame!.OnDart(Dart.NoScore);
+                            })">Miss</MudButton>
+                    </div>
+                </div>
+            </MudItem>
+        </MudGrid>
+    </div>
+
+    <div>
+        <div class="d-flex flex-wrap">
+            <div class="d-flex flex-wrap mx-auto">
+                <MudButton Class="mx-3 mt-10 mb-5" Variant="Variant.Filled" Color=Color.Primary OnClick=@(async () => await GameStateProvider.CurrentGame!.EndTurn())>End Turn</MudButton>
+                <MudButton Class="mx-3 mt-10 mb-5" Variant="Variant.Filled" Color=Color.Error OnClick=ConfirmEndGameAsync>End Game</MudButton>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    private bool _double = false;
+    private bool _treble = false;
+
+    private Task ConfirmEndGameAsync() {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+
+        return DialogService.ShowAsync<ConfirmEndGameDialog>(String.Empty, options);
+    }
+
+}

@@ -1,4 +1,7 @@
 ﻿
+
+using DartsScoreboardGames.Services.Models;
+
 namespace DartsScoreboardGames.Services.Games {
     public class GameSelection : IGameState {
         public static string Name => "Game Select";
@@ -12,5 +15,8 @@ namespace DartsScoreboardGames.Services.Games {
 
         public static IGameState Create(GameStateProvider gameStateProvider) =>
             new GameSelection();
+
+        public Task OnDart(Dart dart) => Task.CompletedTask;
+        public Task EndTurn() => Task.CompletedTask;
     }
 }

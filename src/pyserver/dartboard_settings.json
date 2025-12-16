@@ -1,7 +1,7 @@
 {
-  "dark_threshold": 130,
-  "brightness_adjust": 10,
+  "color_diff_threshold": 35,
+  "brightness_adjust": 30,
   "contrast_adjust": 1.0,
-  "center_offset_x": -6,
-  "center_offset_y": 0
+  "center_offset_x": 5,
+  "center_offset_y": -12
 }

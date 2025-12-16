@@ -1,4 +1,5 @@
-﻿@using DartsScoreboardGames.Components.Pages.Screens.Games.Dialogs
+﻿@using DartsScoreboardGames.Components.Pages.Screens.Games.Components
+@using DartsScoreboardGames.Components.Pages.Screens.Games.Dialogs
 @using DartsScoreboardGames.Components.Pages.Screens.Games.Interfaces
 @using DartsScoreboardGames.Components.Pages.Screens.SharedComponents
 @using DartsScoreboardGames.Services.Games
@@ -12,65 +13,59 @@
 @inject GameStateProvider GameStateProvider
 @inject CheckoutCalculator CheckoutCalculator
 
-<MudGrid Class="mt-lg-20">
-    <MudItem Class="mx-auto" xs=11 lg=8>
-        <div class="d-flex flex-wrap">
-            @foreach (var player in GameStateProvider.Players) {
+<GameView>
+    <MudGrid Class="mt-lg-20">
+        <MudItem Class="mx-auto" xs=11 lg=8>
+            <div class="d-flex flex-wrap">
+                @foreach (var player in GameStateProvider.Players) {
 
-                <MudCard class="@("w-100 flex-row my-5 game-card" + (GameStateProvider.ActivePlayer == player ? " active" : string.Empty))" Style="width:100%;">
-                    <PlayerDisplay class="my-auto ml-10" Player="@player" OnSelect="@(async () => {
-                        if(GameStateProvider.ActivePlayer == player) {
-                            await CurrentGame.FakeRandomDart();
-                        }
-                    })" />
-                    <div class="d-flex flex-column flex-wrap my-auto mx-auto">
-                        <MudText Typo="Typo.h6" Align="Align.Center">3 Dart Avg</MudText>
-                        <MudText Typo="Typo.subtitle1" Align="Align.Center">@(CurrentGame.AvgScore(player))</MudText>
-                    </div>
-                    <div class="d-flex flex-column flex-wrap my-auto">
-                        <MudText Typo="Typo.h6" Align="Align.Center">Highest Score</MudText>
-                        <MudText Typo="Typo.subtitle1" Align="Align.Center">@(CurrentGame.HighestScore(player))</MudText>
-                    </div>
-                    <div class="d-flex flex-row flex-wrap my-auto ml-auto mr-10">
-                        <div class="d-flex flex-column mr-5 my-auto" Style="min-width: 50px;">
-                            @if(GameStateProvider.ActivePlayer == player && GameStateProvider.CurrentTurn is not null) {
-                                @if (GameStateProvider.CurrentTurn.Throws.First.HasValue && !GameStateProvider.CurrentTurn.Bust) {
-                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@GameStateProvider.CurrentTurn?.Throws.First?.ToString()</MudChip>
-                                }
-                                @if (GameStateProvider.CurrentTurn.Throws.Second.HasValue && !GameStateProvider.CurrentTurn.Bust) {
-                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@GameStateProvider.CurrentTurn?.Throws.Second?.ToString()</MudChip>
-                                }
-                                @if (GameStateProvider.CurrentTurn.Throws.Third.HasValue && !GameStateProvider.CurrentTurn.Bust) {
-                                    <MudChip T="string" Color="Color.Primary" class="mx-auto">@GameStateProvider.CurrentTurn?.Throws.Third?.ToString()</MudChip>
-                                }
-                            }
+                    <MudCard class="@("w-100 flex-row my-5 game-card" + (GameStateProvider.ActivePlayer == player ? " active" : string.Empty))" Style="width:100%;">
+                        <PlayerDisplay class="my-auto ml-md-10 ml-3" Player="@player" />
+                        <div class="d-none d-md-flex flex-column flex-wrap my-auto mx-auto">
+                            <MudText Typo="Typo.h6" Align="Align.Center">3 Dart Avg</MudText> 
+                            <MudText Typo="Typo.subtitle1" Align="Align.Center">@(CurrentGame.AvgScore(player))</MudText>
                         </div>
-                        <AnimatedNumberDisplay Color="@(GameStateProvider.ActivePlayer == player && (GameStateProvider.CurrentTurn?.Bust ?? false) ? Color.Error : Color.Default)" Value="@CurrentGame.PlayerScore(player)" />
-                    </div>
-                </MudCard>
+                        <div class="d-none d-md-flex flex-column flex-wrap my-auto">
+                            <MudText Typo="Typo.h6" Align="Align.Center">Highest Score</MudText>
+                            <MudText Typo="Typo.subtitle1" Align="Align.Center">@(CurrentGame.HighestScore(player))</MudText>
+                        </div>
+                        <div class="d-flex flex-row my-auto ml-auto mr-10">
+                            <div class="d-flex flex-column mr-1 mr-md-5 my-auto" Style="min-width: 50px;">
+                                @if (GameStateProvider.ActivePlayer == player && GameStateProvider.CurrentTurn is not null) {
+                                    @if (GameStateProvider.CurrentTurn.Throws.First.HasValue && !GameStateProvider.CurrentTurn.Bust) {
+                                        <MudChip T="string" Color="Color.Primary" class="mx-auto">@GameStateProvider.CurrentTurn?.Throws.First?.ToString()</MudChip>
+                                    }
+                                    @if (GameStateProvider.CurrentTurn.Throws.Second.HasValue && !GameStateProvider.CurrentTurn.Bust) {
+                                        <MudChip T="string" Color="Color.Primary" class="mx-auto">@GameStateProvider.CurrentTurn?.Throws.Second?.ToString()</MudChip>
+                                    }
+                                    @if (GameStateProvider.CurrentTurn.Throws.Third.HasValue && !GameStateProvider.CurrentTurn.Bust) {
+                                        <MudChip T="string" Color="Color.Primary" class="mx-auto">@GameStateProvider.CurrentTurn?.Throws.Third?.ToString()</MudChip>
+                                    }
+                                }
+                            </div>
+                            <AnimatedNumberDisplay Color="@(GameStateProvider.ActivePlayer == player && (GameStateProvider.CurrentTurn?.Bust ?? false) ? Color.Error : Color.Default)" Value="@CurrentGame.PlayerScore(player)" />
+                        </div>
+                    </MudCard>
 
-            }
-        </div>
-        <div class="d-flex d-lg-none">
-            <MudButton Class="ml-5" Variant="Variant.Filled" OnClick=@(async () => await CurrentGame.EndTurn())>End Turn</MudButton>
-            <MudButton Class="ml-auto mr-5" Variant="Variant.Filled" OnClick=ConfirmEndGameAsync>End Game</MudButton>
-        </div>
-    </MudItem>
-</MudGrid>
-<MudDrawer @bind-Open="@checkoutDrawerOpen" Elevation="0" Variant="@DrawerVariant.Temporary" Overlay=false Anchor="Anchor.Right">
-    <MudDrawerHeader>
-        <MudText Typo="Typo.h6">Checkouts</MudText>
-    </MudDrawerHeader>
-    <div class="d-flex flex-column mt-5" Style="min-width: 50px;">
-        @foreach (var checkout in CheckoutCalculator.CheckoutsFor(CurrentGame.ActivePlayerScore(), GameStateProvider.CurrentTurn?.Remaining ?? 3)) {
-            <div class="d-flex flex-row my-auto" Style="min-width: 50px;">
-                @foreach (var dart in checkout.Darts) {
-                    <MudChip Size=Size.Large T="string" Color="Color.Success" class="mx-auto mt-3">@dart.ToString()</MudChip>
                 }
             </div>
-        }
-    </div>
-</MudDrawer>
+        </MudItem>
+    </MudGrid>
+    <MudDrawer @bind-Open="@checkoutDrawerOpen" Elevation="0" Variant="@DrawerVariant.Temporary" Overlay=false Anchor="Anchor.Right" Class="d-none d-md-flex">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.h6">Checkouts</MudText>
+        </MudDrawerHeader>
+        <div class="d-flex flex-column mt-5" Style="min-width: 50px;">
+            @foreach (var checkout in CheckoutCalculator.CheckoutsFor(CurrentGame.ActivePlayerScore(), GameStateProvider.CurrentTurn?.Remaining ?? 3)) {
+                <div class="d-flex flex-row my-auto" Style="min-width: 50px;">
+                    @foreach (var dart in checkout.Darts) {
+                        <MudChip Size=Size.Large T="string" Color="Color.Success" class="mx-auto mt-3">@dart.ToString()</MudChip>
+                    }
+                </div>
+            }
+        </div>
+    </MudDrawer>
+</GameView>
 @code {
     private StandardGame CurrentGame = default!;
 
@@ -85,18 +80,12 @@
         CurrentGame.OnTurnEnd += TurnEndHandler;
     }
 
-    private Task ConfirmEndGameAsync() {
-        var options = new DialogOptions { CloseOnEscapeKey = true };
-
-        return DialogService.ShowAsync<ConfirmEndGameDialog>(String.Empty, options);
-    }
-
     private async Task CheckCheckout() {
         checkoutDrawerOpen = CheckoutCalculator.CanCheckout(CurrentGame.ActivePlayerScore(), GameStateProvider.CurrentTurn?.Remaining ?? 3);
         await InvokeAsync(StateHasChanged);
     }
 
-    private async void GameEventHandler(object? sender, EventArgs e) { 
+    private async void GameEventHandler(object? sender, EventArgs e) {
         await CheckCheckout();
     }
 

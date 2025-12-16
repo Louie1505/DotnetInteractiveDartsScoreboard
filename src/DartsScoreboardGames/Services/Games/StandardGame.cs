@@ -4,7 +4,7 @@ using MudBlazor;
 
 namespace DartsScoreboardGames.Services.Games {
     public class StandardGame : IGameState {
-        public static string Name => "Standard Game";
+        public static string Name => "Standard";
         public static string Description => "Select a Game";
         public static string Logo => "assets/dartboard-face-standard.png";
         public static string Background => "assets/darts-background-standard.png";
@@ -26,14 +26,7 @@ namespace DartsScoreboardGames.Services.Games {
 
         private GameStateProvider GameStateProvider { get; set; } = default!;
 
-        public async Task FakeRandomDart() {
-            //TODO this is where we wire in the computer vision code (triggering this method)
-            Dart dart = Dart.GetRandomDart();
-
-            await OnDart(dart);
-        }
-
-        private async Task OnDart(Dart dart) {
+        public async Task OnDart(Dart dart) {
 
             if (ActivePlayerScore() - dart.Value <= 1) {
                 if ((dart.IsDouble || dart == Dart.Bull) && dart.Value == ActivePlayerScore()) {
@@ -60,6 +53,7 @@ namespace DartsScoreboardGames.Services.Games {
 
         public async Task EndTurn() {
             GameStateProvider.CurrentTurn?.End();
+            GameStateProvider.ForceStateChange();
             await Task.Delay(1000);
             GameStateProvider.SetNextPlayer();
             OnTurnEnd?.Invoke(this, EventArgs.Empty);

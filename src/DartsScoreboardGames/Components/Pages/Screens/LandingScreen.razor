@@ -1,44 +1,89 @@
 ﻿@using DartsScoreboardGames.Components.Pages.Screens.SharedComponents
 @using DartsScoreboardGames.Infrastructure.Services
 @using DartsScoreboardGames.Services.Games
+@using Microsoft.AspNetCore.Hosting.Server.Features
 @using PinguApps.Blazor.QRCode
+@using System.Net.NetworkInformation
+@using System.Text
+@using System.Net
+@using System.Net.Sockets
 
 @implements IDisposable
 
-@inject NavigationManager NavigationManager
 @inject GameStateProvider GameStateProvider
 @inject IDialogService DialogService
 
 <MudGrid Class="mt-10 mt-lg-20">
     <MudItem lg="4" xs="0" Class="d-none d-lg-flex">
         <div Class="mx-5 d-flex flex-column mx-auto">
-            <MudText Typo="Typo.h3" Align="Align.Center">Join the Game at <br /> <strong>@NavigationManager.Uri</strong> <br /> or scan: </MudText>
-            <QRCode Class="mx-auto mt-15" Data=@NavigationManager.Uri Size="150px" />
+            @if (_uri is null) {
+                <MudText Typo="Typo.subtitle1" Align="Align.Center" Color=Color.Error Class="mt-5">No Network Detected - Connect to the Internet</MudText>
+            } else {
+                <MudText Typo="Typo.h3" Align="Align.Center">Join the Game at <br /> <strong>@_uri</strong> <br /> or scan: </MudText>
+                <QRCode Class="mx-auto mt-15" Data="@_uri" Size="150px" />
+                <MudText Typo="Typo.subtitle1" Class="mt-15" Align="Align.Center">Connection Issues? Make sure your device is on the same WiFi network</MudText>
+            }
+
         </div>
     </MudItem>
     <MudItem lg="4" xs="12">
-        <div Class="mx-5 d-flex flex-column">
-            <MudButton Style="width: 10em" Class="mb-10 mb-lg-0 mx-auto mt-0 mt-lg-20" Variant="Variant.Filled" Disabled=@(!GameStateProvider.Players.Any()) OnClick=@(() => GameStateProvider.SetGameScreen<GameSelection>())>Start New Game</MudButton>
+        <div Class="mx-5 d-flex d-md-none flex-column">
+            <MudButton Color=Color.Primary Style="width: 10em" Class="mb-10 mb-lg-0 mx-auto mt-0 mt-lg-20" Variant="Variant.Filled" Disabled=@(!GameStateProvider.Players.Any()) OnClick=@(() => GameStateProvider.SetGameScreen<GameSelection>())>Start Game</MudButton>
+        </div>
+        <div Class="mx-5 d-none d-md-flex flex-column">
+
         </div>
     </MudItem>
     <MudItem lg="4" xs="12">
         <div Class="mx-5 d-flex flex-column">
             @if (!GameStateProvider.Players.Any()) {
-                <MudText Typo="Typo.h5">Waiting for players..</MudText>
-            } else { 
+                <MudText Class="d-none d-md-block" Typo="Typo.h5">Waiting for players..</MudText>
+            } else {
                 @foreach (var player in GameStateProvider.Players) {
                     <PlayerDisplay Class="mb-5" Player=player OnCrossClick=@(() => GameStateProvider.RemovePlayer(player)) />
                 }
+                <MudText Class="mx-auto d-none d-md-block mt-5" Typo="Typo.h5">Press Start Game when Everyone's In!</MudText>
             }
-            <MudIconButton Class="mx-auto" Icon="fa-regular fa-plus" @onclick="OpenDialogAsync" />
+            <MudIconButton Class="mx-auto d-flex d-md-none" Icon="fa-regular fa-plus" @onclick="OpenDialogAsync" />
         </div>
     </MudItem>
 </MudGrid>
 
 
 @code {
+    private string? _uri = null;
+
     protected override void OnInitialized() {
         GameStateProvider.OnGameStateChanged += ChangeHandler;
+        _uri = ResolveUri();
+    }
+
+    private string? ResolveUri() {
+        if (!NetworkInterface.GetIsNetworkAvailable()) {
+            return null;
+        } else {
+            StringBuilder qrRef = new();
+
+            qrRef.Append("http://");
+            try {
+                using (Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0)) {
+                    socket.Connect("8.8.8.8", 65530);
+                    if (socket.LocalEndPoint is IPEndPoint ipEndPoint) {
+                        qrRef.Append(ipEndPoint.Address.ToString());
+
+                        qrRef.Append(":5144");
+
+                        return qrRef.ToString();
+                    } else {
+                        return null;
+                    }
+                }
+            } catch {
+
+                return null;
+
+            }
+        }
     }
 
     public void Dispose() {

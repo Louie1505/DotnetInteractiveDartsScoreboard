@@ -18,8 +18,8 @@ class SimpleDartboardDetector:
         # Settings file path
         self.settings_file = 'dartboard_settings.json'
         
-        # Adjustable parameters for reflection handling (defaults)
-        self.dark_threshold = 70  # Adjustable with arrow keys
+        # Adjustable parameters for dartboard detection (defaults)
+        self.color_diff_threshold = 30  # Color difference threshold (adjustable with arrow keys)
         self.brightness_adjust = 0  # Brightness adjustment (-50 to +50)
         self.contrast_adjust = 1.0  # Contrast multiplier (0.5 to 2.0)
         
@@ -36,12 +36,12 @@ class SimpleDartboardDetector:
             if os.path.exists(self.settings_file):
                 with open(self.settings_file, 'r') as f:
                     settings = json.load(f)
-                    self.dark_threshold = settings.get('dark_threshold', 70)
+                    self.color_diff_threshold = settings.get('color_diff_threshold', 30)
                     self.brightness_adjust = settings.get('brightness_adjust', 0)
                     self.contrast_adjust = settings.get('contrast_adjust', 1.0)
                     self.center_offset_x = settings.get('center_offset_x', 0)
                     self.center_offset_y = settings.get('center_offset_y', 0)
-                    print(f"Loaded settings: Threshold={self.dark_threshold}, Brightness={self.brightness_adjust}, Contrast={self.contrast_adjust:.2f}, Offset=({self.center_offset_x}, {self.center_offset_y})")
+                    print(f"Loaded settings: Color Diff={self.color_diff_threshold}, Brightness={self.brightness_adjust}, Contrast={self.contrast_adjust:.2f}, Offset=({self.center_offset_x}, {self.center_offset_y})")
         except Exception as e:
             print(f"Error loading settings: {e}. Using defaults.")
     
@@ -49,7 +49,7 @@ class SimpleDartboardDetector:
         """Save current settings to JSON file"""
         try:
             settings = {
-                'dark_threshold': self.dark_threshold,
+                'color_diff_threshold': self.color_diff_threshold,
                 'brightness_adjust': self.brightness_adjust,
                 'contrast_adjust': self.contrast_adjust,
                 'center_offset_x': self.center_offset_x,
@@ -62,93 +62,115 @@ class SimpleDartboardDetector:
         
     def detect_dartboard(self, frame):
         """
-        Detect dartboard by finding the darkest circular area
+        Detect dartboard by finding areas with significant color difference from background
         """
-        # Convert to grayscale
+        # Convert to grayscale for processing
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
         # Apply brightness and contrast adjustments
         adjusted = cv2.convertScaleAbs(gray, alpha=self.contrast_adjust, beta=self.brightness_adjust)
         
-        # Better noise reduction
-        blurred = cv2.GaussianBlur(adjusted, (7, 7), 1.5)  # Slightly larger blur
-        blurred = cv2.bilateralFilter(blurred, 5, 50, 50)  # Edge-preserving smoothing
+        # Noise reduction
+        blurred = cv2.GaussianBlur(adjusted, (7, 7), 1.5)
+        blurred = cv2.bilateralFilter(blurred, 5, 50, 50)
         
-        # Create mask for dark areas (dartboard background)
-        # Find the darkest areas in the image
-        dark_mask = cv2.threshold(blurred, self.dark_threshold, 255, cv2.THRESH_BINARY_INV)[1]
+        # Calculate background color by sampling border regions
+        h, w = blurred.shape
+        border_width = min(50, w//10)  # Sample from border
+        border_height = min(50, h//10)
         
-        # More refined cleanup
-        kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+        # Sample from all four borders
+        top_border = blurred[0:border_height, :]
+        bottom_border = blurred[h-border_height:h, :]
+        left_border = blurred[:, 0:border_width]
+        right_border = blurred[:, w-border_width:w]
         
-        # Fill small gaps first
-        dark_mask = cv2.morphologyEx(dark_mask, cv2.MORPH_CLOSE, kernel_small)
-        # Remove noise
-        dark_mask = cv2.morphologyEx(dark_mask, cv2.MORPH_OPEN, kernel_small)
-        # Final smoothing with larger kernel
-        dark_mask = cv2.morphologyEx(dark_mask, cv2.MORPH_CLOSE, kernel_large)
+        # Calculate average background color
+        border_pixels = np.concatenate([
+            top_border.flatten(),
+            bottom_border.flatten(), 
+            left_border.flatten(),
+            right_border.flatten()
+        ])
+        background_avg = np.mean(border_pixels)
+        
+        print(f"Debug: Background average: {background_avg:.1f}")
+        
+        # Create mask for areas that differ significantly from background
+        diff_from_bg = np.abs(blurred.astype(np.float32) - background_avg)
+        diff_mask = (diff_from_bg > self.color_diff_threshold).astype(np.uint8) * 255
+        
+        # More aggressive morphological operations to reduce false positives
+        kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+        kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (20, 20))
+        
+        # Fill gaps and remove noise - more aggressive cleanup
+        diff_mask = cv2.morphologyEx(diff_mask, cv2.MORPH_OPEN, kernel_small)  # Remove small noise first
+        diff_mask = cv2.morphologyEx(diff_mask, cv2.MORPH_CLOSE, kernel_large)  # Fill dartboard gaps
+        diff_mask = cv2.morphologyEx(diff_mask, cv2.MORPH_OPEN, kernel_small)  # Clean up again
         
         # Final noise reduction
-        dark_mask = cv2.medianBlur(dark_mask, 3)  # Smaller median filter
+        diff_mask = cv2.medianBlur(diff_mask, 5)
         
-        # Use center of mass of the existing dark mask (which shows the dartboard as white)
-        # Find the center of mass of the white dartboard area in the mask
-        white_pixels_in_mask = np.where(dark_mask > 0)
+        # Find the center of mass of the detected dartboard area
+        diff_pixels = np.where(diff_mask > 0)
         
-        print(f"Debug: Found {len(white_pixels_in_mask[0])} white pixels in mask")
+        print(f"Debug: Found {len(diff_pixels[0])} different pixels in mask")
         
-        if len(white_pixels_in_mask[0]) > 500:  # Lower threshold for debugging
-            y_coords, x_coords = white_pixels_in_mask
+        if len(diff_pixels[0]) > 1000:  # Need sufficient pixels for dartboard
+            y_coords, x_coords = diff_pixels
             
-            # Calculate center of mass of the white dartboard area in the mask
+            # Calculate center of mass
             com_x = int(np.mean(x_coords))
             com_y = int(np.mean(y_coords))
             
             # Estimate radius by finding distances from center
             distances = np.sqrt((x_coords - com_x)**2 + (y_coords - com_y)**2)
             
-            # Use 99th percentile and add a multiplier to ensure we get the full dartboard
-            base_radius = int(np.percentile(distances, 99))
-            radius = int(base_radius * 1.1)  # Add 10% to ensure we capture the outer edge
+            # Use 90th percentile for radius to avoid outliers
+            base_radius = int(np.percentile(distances, 90))
+            radius = int(base_radius * 0.95)  # Smaller buffer to avoid oversizing
             
             print(f"Debug: Center=({com_x}, {com_y}), Base Radius={base_radius}, Final Radius={radius}")
             print(f"Debug: Frame size=({frame.shape[1]}, {frame.shape[0]})")
             
-            # Ensure radius is reasonable for a dartboard and fits in frame
-            max_radius = min(350, frame.shape[1]//2.2, frame.shape[0]//2.2)  # Even larger max radius
-            radius = max(100, min(radius, max_radius))
+            # Ensure radius is reasonable for a dartboard
+            max_radius = min(350, frame.shape[1]//2.2, frame.shape[0]//2.2)
+            radius = max(80, min(radius, max_radius))
             
             print(f"Debug: Adjusted radius to {radius}")
             
-            # Much more lenient position validation
-            margin = 15  # Larger margin for bigger circles
+            # Validate position - be more lenient
+            margin = 10  # Smaller margin
             frame_width = frame.shape[1]
             frame_height = frame.shape[0]
             
-            print(f"Debug: Validation check - need: {radius + margin} < {com_x} < {frame_width - radius - margin}")
-            print(f"Debug: Validation check - need: {radius + margin} < {com_y} < {frame_height - radius - margin}")
+            # More reasonable validation bounds
+            x_valid = margin < com_x < frame_width - margin
+            y_valid = margin < com_y < frame_height - margin
+            radius_valid = radius > 50 and radius < min(frame_width//2, frame_height//2) - margin
             
-            if (radius + margin < com_x < frame_width - radius - margin and 
-                radius + margin < com_y < frame_height - radius - margin):
+            print(f"Debug: Validation - X: {x_valid} ({margin} < {com_x} < {frame_width - margin})")
+            print(f"Debug: Validation - Y: {y_valid} ({margin} < {com_y} < {frame_height - margin})")
+            print(f"Debug: Validation - R: {radius_valid} (50 < {radius} < {min(frame_width//2, frame_height//2) - margin})")
+            
+            if x_valid and y_valid and radius_valid:
                 
                 print(f"Debug: Detection successful - final coords ({com_x}, {com_y}, {radius})")
                 x, y, r = int(com_x), int(com_y), int(radius)
                 
-                # Minimal smoothing for now to see if detection works
+                # Light smoothing with previous detection
                 if self.last_detection is not None:
                     last_x, last_y, last_r = self.last_detection
                     
-                    # Light smoothing
-                    smooth_factor = 0.3
+                    smooth_factor = 0.2
                     x = int(smooth_factor * last_x + (1 - smooth_factor) * x)
                     y = int(smooth_factor * last_y + (1 - smooth_factor) * y)
                     r = int(smooth_factor * last_r + (1 - smooth_factor) * r)
-                 
                 
                 self.last_detection = (int(x), int(y), int(r))
                 
-                # Apply small pixel offset for fine adjustment
+                # Apply manual offset adjustment
                 final_x = int(x) + self.center_offset_x
                 final_y = int(y) + self.center_offset_y
                 
@@ -229,7 +251,7 @@ class SimpleDartboardDetector:
             cv2.putText(result_frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             
             # Show current adjustment values
-            adj_text = f"T:{self.dark_threshold} B:{self.brightness_adjust} C:{self.contrast_adjust:.2f}"
+            adj_text = f"CD:{self.color_diff_threshold} B:{self.brightness_adjust} C:{self.contrast_adjust:.2f}"
             cv2.putText(result_frame, adj_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
             
             # Show center offset values
@@ -240,7 +262,7 @@ class SimpleDartboardDetector:
             cv2.putText(result_frame, "Searching for dartboard...", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             
             # Show current adjustment values even when searching
-            adj_text = f"T:{self.dark_threshold} B:{self.brightness_adjust} C:{self.contrast_adjust:.2f}"
+            adj_text = f"CD:{self.color_diff_threshold} B:{self.brightness_adjust} C:{self.contrast_adjust:.2f}"
             cv2.putText(result_frame, adj_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
             
             # Show center offset values
@@ -250,7 +272,7 @@ class SimpleDartboardDetector:
         # Draw keybind instructions
         keybinds = [
             "Controls:",
-            "T/G = Threshold +/-",
+            "T/G = Color Diff +/-",
             "Y/H = Brightness -/+", 
             "U/J = Contrast +/-",
             "Arrows = Center Adjust",
@@ -269,30 +291,49 @@ class SimpleDartboardDetector:
     
     def show_debug_mask(self, frame):
         """
-        Show the dark mask for debugging
+        Show the color difference mask for debugging
         """
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         adjusted = cv2.convertScaleAbs(gray, alpha=self.contrast_adjust, beta=self.brightness_adjust)
         blurred = cv2.GaussianBlur(adjusted, (7, 7), 1.5)
         blurred = cv2.bilateralFilter(blurred, 5, 50, 50)
         
-        # Create the same dark mask as in detection
-        dark_mask = cv2.threshold(blurred, self.dark_threshold, 255, cv2.THRESH_BINARY_INV)[1]
+        # Calculate background average the same way as in detection
+        h, w = blurred.shape
+        border_width = min(50, w//10)
+        border_height = min(50, h//10)
         
-        kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+        top_border = blurred[0:border_height, :]
+        bottom_border = blurred[h-border_height:h, :]
+        left_border = blurred[:, 0:border_width]
+        right_border = blurred[:, w-border_width:w]
         
-        dark_mask = cv2.morphologyEx(dark_mask, cv2.MORPH_CLOSE, kernel_small)
-        dark_mask = cv2.morphologyEx(dark_mask, cv2.MORPH_OPEN, kernel_small)
-        dark_mask = cv2.morphologyEx(dark_mask, cv2.MORPH_CLOSE, kernel_large)
-        dark_mask = cv2.medianBlur(dark_mask, 3)
+        border_pixels = np.concatenate([
+            top_border.flatten(),
+            bottom_border.flatten(), 
+            left_border.flatten(),
+            right_border.flatten()
+        ])
+        background_avg = np.mean(border_pixels)
         
-        return dark_mask
+        # Create the same color difference mask as in detection
+        diff_from_bg = np.abs(blurred.astype(np.float32) - background_avg)
+        diff_mask = (diff_from_bg > self.color_diff_threshold).astype(np.uint8) * 255
+        
+        kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+        
+        diff_mask = cv2.morphologyEx(diff_mask, cv2.MORPH_CLOSE, kernel_small)
+        diff_mask = cv2.morphologyEx(diff_mask, cv2.MORPH_OPEN, kernel_small)
+        diff_mask = cv2.morphologyEx(diff_mask, cv2.MORPH_CLOSE, kernel_large)
+        diff_mask = cv2.medianBlur(diff_mask, 5)
+        
+        return diff_mask
     
     def adjust_threshold(self, delta):
-        """Adjust dark threshold for reflection handling"""
-        self.dark_threshold = max(0, min(255, self.dark_threshold + delta))
-        print(f"Dark threshold: {self.dark_threshold}")
+        """Adjust color difference threshold for detection sensitivity"""
+        self.color_diff_threshold = max(5, min(100, self.color_diff_threshold + delta))
+        print(f"Color difference threshold: {self.color_diff_threshold}")
         self.save_settings()
     
     def adjust_brightness(self, delta):
@@ -321,12 +362,12 @@ class SimpleDartboardDetector:
     
     def reset_adjustments(self):
         """Reset all adjustments to defaults"""
-        self.dark_threshold = 70
+        self.color_diff_threshold = 30
         self.brightness_adjust = 0
         self.contrast_adjust = 1.0
         self.center_offset_x = 0
         self.center_offset_y = 0
-        print("Reset to defaults: Threshold=70, Brightness=0, Contrast=1.0, Offset=(0,0)")
+        print("Reset to defaults: Color Diff=30, Brightness=0, Contrast=1.0, Offset=(0,0)")
         self.save_settings()
 
 if __name__ == "__main__":

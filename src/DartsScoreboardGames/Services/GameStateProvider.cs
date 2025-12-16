@@ -42,9 +42,9 @@ namespace DartsScoreboardGames.Services {
             turns = Players.ToDictionary(x => x, x => new List<Turn>() { new() });
             OnGameStateChanged?.Invoke(this, EventArgs.Empty);
         }
-        
-        public void MarkPlayerOut (Player player) =>
-            _playersOut.Add (player);
+
+        public void MarkPlayerOut(Player player) =>
+            _playersOut.Add(player);
 
         public void SetNextPlayer() {
             turns[ActivePlayer].Add(new());
@@ -52,12 +52,16 @@ namespace DartsScoreboardGames.Services {
             ActivePlayer = Players.IndexOf(ActivePlayer) == Players.Count - 1 ?
                 Players.First() :
                 Players.ElementAt(Players.IndexOf(ActivePlayer) + 1);
-            
-            if(_playersOut.Contains(ActivePlayer)){ 
+
+            if (_playersOut.Contains(ActivePlayer)) {
                 SetNextPlayer();
 
-                }
+            }
 
+        }
+
+        public void ForceStateChange(){ 
+            OnGameStateChanged?.Invoke(this, EventArgs.Empty);
         }
 
         public async Task CurrentPlayerWin() =>
