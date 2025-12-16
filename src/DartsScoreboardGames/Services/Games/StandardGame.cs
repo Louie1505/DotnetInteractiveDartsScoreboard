@@ -5,7 +5,7 @@ using MudBlazor;
 namespace DartsScoreboardGames.Services.Games {
     public class StandardGame : IGameState {
         public static string Name => "Standard";
-        public static string Description => "Select a Game";
+        public static string Description => "Just your classic game of darts—because who needs excitement when you have tradition?";
         public static string Logo => "assets/dartboard-face-standard.png";
         public static string Background => "assets/darts-background-standard.png";
         public static int PlayerRequirement => 1;
